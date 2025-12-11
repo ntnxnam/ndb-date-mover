@@ -377,21 +377,32 @@ class JiraClient:
             filter_part = filter_match.group(1).strip()
             
             # Check if there's additional JQL after the filter
-            # Look for AND/OR keywords that indicate additional clauses
+            # Look for AND/OR/ORDER BY keywords that indicate additional clauses
             additional_jql = None
             filter_id_or_name = filter_part
             
-            # Try to split on AND/OR (case insensitive)
-            # Match " and " or " AND " or " or " or " OR " with spaces
-            # Pattern: space, then AND/OR (case insensitive), then space
-            # This ensures we don't match "and" inside words
-            match = re.search(r'\s+(AND|OR)\s+', filter_part, re.IGNORECASE)
+            # Try to split on AND/OR/ORDER BY (case insensitive)
+            # Match patterns:
+            # - " and " or " AND " or " or " or " OR " with spaces
+            # - " order by " or " ORDER BY " with spaces
+            # This ensures we don't match keywords inside words
+            # Priority: ORDER BY first (it's more specific), then AND/OR
+            match = None
+            # First try ORDER BY (more specific, usually comes at the end)
+            order_by_match = re.search(r'\s+ORDER\s+BY\s+', filter_part, re.IGNORECASE)
+            if order_by_match:
+                match = order_by_match
+            else:
+                # Then try AND/OR
+                match = re.search(r'\s+(AND|OR)\s+', filter_part, re.IGNORECASE)
+            
             if match:
                 split_pos = match.start()
                 filter_id_or_name = filter_part[:split_pos].strip()
                 additional_jql = filter_part[split_pos:].strip()
-                # Normalize AND/OR to uppercase for consistency
+                # Normalize keywords to uppercase for consistency
                 additional_jql = re.sub(r'\b(and|or)\b', lambda m: m.group(1).upper(), additional_jql, flags=re.IGNORECASE)
+                additional_jql = re.sub(r'\b(order\s+by)\b', 'ORDER BY', additional_jql, flags=re.IGNORECASE)
             
             # Remove quotes if present for processing, but preserve them if they were there
             is_quoted = False

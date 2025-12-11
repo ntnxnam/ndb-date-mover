@@ -1062,28 +1062,87 @@
                             if (col === 'customfield_23560') {
                                 // Extract value from object if needed (JIRA custom fields can be objects)
                                 let riskText = '';
-                                if (typeof value === 'object') {
-                                    // Handle object values (e.g., {"value": "red"} or {"name": "red"})
-                                    riskText = value.value || value.name || value.displayName || JSON.stringify(value);
+                                
+                                // Handle different value types
+                                if (value === null || value === undefined) {
+                                    riskText = '';
+                                } else if (Array.isArray(value)) {
+                                    // Handle array values (take first element)
+                                    if (value.length > 0) {
+                                        const firstItem = value[0];
+                                        if (typeof firstItem === 'object' && firstItem !== null) {
+                                            riskText = firstItem.value || firstItem.name || firstItem.displayName || firstItem.id || String(firstItem);
+                                        } else {
+                                            riskText = String(firstItem);
+                                        }
+                                    } else {
+                                        riskText = '';
+                                    }
+                                } else if (typeof value === 'object') {
+                                    // Handle object values - check multiple possible properties
+                                    // JIRA custom fields can have different structures
+                                    riskText = value.value || 
+                                              value.name || 
+                                              value.displayName || 
+                                              value.label ||
+                                              value.id ||
+                                              (value.toString && value.toString() !== '[object Object]' ? value.toString() : '');
+                                    
+                                    // If still empty or [object Object], try to find any string property
+                                    if (!riskText || riskText === '[object Object]' || riskText === '{}') {
+                                        for (const key in value) {
+                                            if (value.hasOwnProperty(key)) {
+                                                const propValue = value[key];
+                                                if (typeof propValue === 'string' && propValue.trim()) {
+                                                    riskText = propValue;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Last resort: try JSON.stringify but extract meaningful content
+                                    if (!riskText || riskText === '[object Object]' || riskText === '{}') {
+                                        try {
+                                            const jsonStr = JSON.stringify(value);
+                                            // Try to extract value from JSON if it's a simple object
+                                            const match = jsonStr.match(/"value"\s*:\s*"([^"]+)"/) ||
+                                                         jsonStr.match(/"name"\s*:\s*"([^"]+)"/) ||
+                                                         jsonStr.match(/"displayName"\s*:\s*"([^"]+)"/);
+                                            riskText = match ? match[1] : '';
+                                        } catch (e) {
+                                            riskText = '';
+                                        }
+                                    }
                                 } else {
+                                    // Primitive value (string, number, boolean)
                                     riskText = String(value);
                                 }
                                 
-                                const riskValue = riskText.toLowerCase().trim();
-                                let riskClass = '';
+                                // Clean up the text
+                                riskText = riskText.trim();
                                 
-                                if (riskValue === 'red' || riskValue.includes('red')) {
-                                    riskClass = 'red';
-                                } else if (riskValue === 'yellow' || riskValue.includes('yellow')) {
-                                    riskClass = 'yellow';
-                                } else if (riskValue === 'green' || riskValue.includes('green')) {
-                                    riskClass = 'green';
-                                }
-                                
-                                if (riskClass) {
-                                    display = `<span class="risk-indicator ${riskClass}">${riskText}</span>`;
+                                // Only proceed if we have valid text
+                                if (riskText && riskText !== '[object Object]' && riskText !== '{}') {
+                                    const riskValue = riskText.toLowerCase();
+                                    let riskClass = '';
+                                    
+                                    if (riskValue === 'red' || riskValue.includes('red')) {
+                                        riskClass = 'red';
+                                    } else if (riskValue === 'yellow' || riskValue.includes('yellow')) {
+                                        riskClass = 'yellow';
+                                    } else if (riskValue === 'green' || riskValue.includes('green')) {
+                                        riskClass = 'green';
+                                    }
+                                    
+                                    if (riskClass) {
+                                        display = `<span class="risk-indicator ${riskClass}">${riskText}</span>`;
+                                    } else {
+                                        display = riskText;
+                                    }
                                 } else {
-                                    display = riskText;
+                                    // If we couldn't extract a valid value, show empty or fallback
+                                    display = '-';
                                 }
                             } else {
                                 // Check if this field should show AI summary

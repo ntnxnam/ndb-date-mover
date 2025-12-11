@@ -67,6 +67,17 @@ This document outlines the comprehensive test plan for the JIRA Date Tracking & 
   - Expected: Validation error before API call
   - Test: Unit
 
+- ✅ **TC-1.1.10**: Filter with ORDER BY clause
+  - Input: `filter=165194 order by fixVersion ASC`
+  - Expected: Correctly parses filter ID and ORDER BY clause
+  - Test: Unit + Integration
+  - **Critical**: ORDER BY must be detected and separated from filter ID
+
+- ✅ **TC-1.1.11**: Filter with AND clause
+  - Input: `filter=165194 and status = Open`
+  - Expected: Correctly parses filter ID and AND clause
+  - Test: Unit + Integration
+
 #### Test Plan Updates:
 - Document all JQL query formats supported
 - List edge cases and error scenarios
@@ -283,13 +294,18 @@ This document outlines the comprehensive test plan for the JIRA Date Tracking & 
   - **Validation**: format_date() returns dd/mmm/yyyy format
 
 - ✅ **TC-3.2.4**: Risk Indicator color highlighting
-  - Input: Risk Indicator field value (object or string)
+  - Input: Risk Indicator field value (object, array, or string)
   - Expected: 
-    - Value extracted correctly from object (value.name.value.displayName)
+    - Value extracted correctly from object (value, name, displayName, label, id)
+    - Handles arrays (extracts from first element)
+    - Iterates through object properties to find string values
+    - Extracts from JSON string if needed
+    - Validates extracted text (not [object Object] or {})
     - Color badge applied (red/yellow/green) based on value
     - Case-insensitive matching
+    - Fallback to '-' if no valid value found
   - Test: Frontend + Unit (test_frontend_rendering.py)
-  - **Validation**: Object values properly extracted, colors correctly applied
+  - **Validation**: Object/array values properly extracted, colors correctly applied, no [object Object] display
 
 - ✅ **TC-3.2.5**: AI Summary display
   - Input: Status Update field with AI summary

@@ -11,6 +11,8 @@ Build a web application that helps Engineering Program Managers track JIRA proje
    - Validate JQL syntax before execution
    - Execute queries against JIRA API and return structured table data
    - **Filter ID handling**: Convert `filter=12345` to `filter = 12345` JQL format
+   - **Filter with additional clauses**: Support `filter=12345 ORDER BY fixVersion ASC` and `filter=12345 AND status = Open`
+   - **Filter parsing priority**: ORDER BY detected first, then AND/OR clauses
    - **Filter validation**: Validate filter ID is numeric before API call
    - **HTML response detection**: Detect when JIRA returns HTML (auth/permission issues) and provide clear guidance
 
@@ -214,13 +216,19 @@ Build a web application that helps Engineering Program Managers track JIRA proje
    - Authentication and authorization
    - **Non-JSON response handling** (HTML error pages, plain text responses)
 
-4. **Frontend Tests**
-   - JQL input validation
-   - Table rendering with data
-   - Date formatting and strike-through display
-   - Week slip calculation display
-   - Error message display
-   - Navigation and routing
+4. **Frontend Tests** (See `tests/test_frontend_rendering.py`)
+   - ✅ JQL input validation
+   - ✅ Table rendering with data (only configured columns displayed)
+   - ✅ Date formatting validation (dd/mmm/yyyy format)
+   - ✅ Date history reverse chronological order
+   - ✅ Current date exclusion from history
+   - ✅ Risk Indicator color highlighting (object value extraction with array/object handling)
+   - ✅ AI Summary display logic
+   - ✅ Pagination logic
+   - ✅ FixVersions array rendering
+   - ✅ Week slip calculation display
+   - ✅ Error message display
+   - ✅ Navigation and routing
 
 5. **End-to-End Tests**
    - Complete flow: JQL input → query execution → table display
