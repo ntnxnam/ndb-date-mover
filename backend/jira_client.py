@@ -17,6 +17,8 @@ from urllib.parse import urljoin, urlparse
 import requests
 from dotenv import load_dotenv
 
+from .utils import safe_get_response_text, check_html_response
+
 # Load environment variables
 load_dotenv()
 
@@ -320,6 +322,7 @@ class JiraClient:
                     return user_data
                 except ValueError as e:
                     logger.error(f"Failed to parse user info JSON: {str(e)}")
+                    safe_get_response_text(response, 200)  # Log for debugging
                     return None
             else:
                 logger.warning(
@@ -510,12 +513,9 @@ class JiraClient:
                     all_fields = response.json()
                 except ValueError as e:
                     logger.error(f"Failed to parse JSON response from JIRA field metadata: {str(e)}")
-                    try:
-                        response_text = getattr(response, 'text', '')
-                        if response_text:
-                            logger.debug(f"Response text: {response_text[:500]}")
-                    except Exception:
-                        pass
+                    response_text = safe_get_response_text(response, 500)
+                    if response_text:
+                        logger.debug(f"Response text: {response_text}")
                     logger.debug(f"Content-Type: {content_type}")
                     return {}
                 

@@ -14,9 +14,9 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from dotenv import load_dotenv
 
-from jira_client import JiraClient, create_jira_client
-from config_loader import ConfigLoader, load_config
-from date_utils import (
+from backend.jira_client import JiraClient, create_jira_client
+from backend.config_loader import ConfigLoader, load_config
+from backend.date_utils import (
     format_date,
     calculate_week_slip,
     extract_date_history,
