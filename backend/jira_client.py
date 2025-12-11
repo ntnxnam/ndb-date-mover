@@ -368,8 +368,23 @@ class JiraClient:
         try:
             response = self._make_request_with_retry("GET", url, params=params)
             
+            # Check content type before parsing
+            content_type = response.headers.get("content-type", "").lower()
+            
             if response.status_code == 200:
-                data = response.json()
+                try:
+                    data = response.json()
+                except ValueError as e:
+                    logger.error(f"Failed to parse JSON response from JIRA: {str(e)}")
+                    logger.debug(f"Response text: {response.text[:500]}")
+                    logger.debug(f"Content-Type: {content_type}")
+                    return {
+                        "success": False,
+                        "error": f"JIRA returned invalid response format. Please check your JIRA URL and connection. Response preview: {response.text[:200]}",
+                        "issues": [],
+                        "total": 0,
+                    }
+                
                 logger.info(
                     f"JQL query returned {len(data.get('issues', []))} issues "
                     f"(total: {data.get('total', 0)})"
@@ -383,12 +398,18 @@ class JiraClient:
                 }
             elif response.status_code == 400:
                 # JQL syntax error
-                try:
-                    error_data = response.json()
-                    error_messages = error_data.get("errorMessages", [])
-                    error_message = error_messages[0] if error_messages else "Invalid JQL query"
-                except (ValueError, KeyError, IndexError):
-                    error_message = "Invalid JQL query syntax"
+                error_message = "Invalid JQL query syntax"
+                if "application/json" in content_type:
+                    try:
+                        error_data = response.json()
+                        error_messages = error_data.get("errorMessages", [])
+                        error_message = error_messages[0] if error_messages else "Invalid JQL query"
+                    except (ValueError, KeyError, IndexError) as e:
+                        logger.warning(f"Failed to parse error response: {str(e)}")
+                        error_message = response.text[:200] if response.text else "Invalid JQL query syntax"
+                else:
+                    # Not JSON, get text response
+                    error_message = response.text[:200] if response.text else "Invalid JQL query syntax"
                 
                 logger.error(f"JQL syntax error: {error_message}")
                 return {
@@ -399,18 +420,34 @@ class JiraClient:
                 }
             else:
                 logger.error(f"JQL query failed with status {response.status_code}")
+                # Try to get error message
+                error_message = f"Query failed with status {response.status_code}"
+                if response.text:
+                    try:
+                        if "application/json" in content_type:
+                            error_data = response.json()
+                            error_message = error_data.get("message") or error_data.get("error") or error_message
+                        else:
+                            error_message = response.text[:200]
+                    except (ValueError, KeyError):
+                        pass
+                
                 return {
                     "success": False,
-                    "error": f"Query failed with status {response.status_code}",
+                    "error": error_message,
                     "issues": [],
                     "total": 0,
                 }
                 
         except requests.exceptions.RequestException as e:
-            logger.error(f"Request exception during JQL execution: {str(e)}")
+            error_msg = str(e)
+            # Provide more user-friendly error messages
+            if "Expecting value" in error_msg or "JSON" in error_msg:
+                error_msg = "JIRA returned an invalid response. Please verify your JIRA URL and credentials."
+            logger.error(f"Request exception during JQL execution: {error_msg}")
             return {
                 "success": False,
-                "error": f"Request failed: {str(e)}",
+                "error": f"Request failed: {error_msg}",
                 "issues": [],
                 "total": 0,
             }
