@@ -51,6 +51,22 @@ This document outlines the comprehensive test plan for the JIRA Date Tracking & 
   - Test: Integration
   - **Critical**: Must check content-type before parsing JSON
 
+- ✅ **TC-1.1.7**: Filter ID handling
+  - Input: `filter=165194`
+  - Expected: Converts to `filter = 165194` JQL format
+  - Test: Unit + Integration
+
+- ✅ **TC-1.1.8**: Filter ID with HTML response (auth/permission issue)
+  - Input: Filter ID that returns HTML (login page or error)
+  - Expected: Clear error message about authentication/permissions
+  - Test: Integration
+  - **Critical**: Must detect HTML responses and provide actionable guidance
+
+- ✅ **TC-1.1.9**: Invalid filter ID format
+  - Input: `filter=abc123` (non-numeric)
+  - Expected: Validation error before API call
+  - Test: Unit
+
 #### Test Plan Updates:
 - Document all JQL query formats supported
 - List edge cases and error scenarios

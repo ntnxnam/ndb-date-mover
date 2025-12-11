@@ -10,6 +10,9 @@ Build a web application that helps Engineering Program Managers track JIRA proje
    - Accept JQL queries from users (including nested filters like `filter=12345`)
    - Validate JQL syntax before execution
    - Execute queries against JIRA API and return structured table data
+   - **Filter ID handling**: Convert `filter=12345` to `filter = 12345` JQL format
+   - **Filter validation**: Validate filter ID is numeric before API call
+   - **HTML response detection**: Detect when JIRA returns HTML (auth/permission issues) and provide clear guidance
 
 2. **Custom Field Configuration**
    - Create a JSON configuration file (`config/fields.json`) where users specify:
@@ -172,6 +175,7 @@ Build a web application that helps Engineering Program Managers track JIRA proje
    - Date history parsing from changelog
    - Error handling and retry logic
    - **JSON parsing error handling** (non-JSON responses from JIRA)
+   - **Filter ID handling** (conversion, validation, HTML response detection)
 
 2. **Integration Tests**
    - JIRA API connection and authentication
