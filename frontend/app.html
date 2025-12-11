@@ -338,6 +338,20 @@
             background: #f5f5f5;
         }
 
+        /* Date Metrics (Change Count + Week Slip) */
+        .date-metrics {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 6px;
+        }
+
+        .change-count {
+            font-size: 0.85em;
+            color: #666;
+            font-weight: 500;
+        }
+
         /* Risk Indicator Color Highlighting */
         .risk-indicator {
             display: inline-block;
@@ -1042,6 +1056,7 @@
                             const current = fields[`${col}_formatted`];
                             const history = fields[`${col}_history`] || [];
                             const weekSlip = fields[`${col}_week_slip`];
+                            const changeCount = fields[`${col}_change_count`] || 0;
 
                             display = '<div class="date-cell">';
                             display += `<div class="date-current">${current}</div>`;
@@ -1052,8 +1067,21 @@
                                 '</div>';
                             }
 
-                            if (weekSlip) {
-                                display += `<div class="week-slip ${weekSlip.color}">${weekSlip.display}</div>`;
+                            // Display change count and date difference
+                            if (changeCount > 0 || weekSlip) {
+                                display += '<div class="date-metrics">';
+                                
+                                // Change count
+                                if (changeCount > 0) {
+                                    display += `<span class="change-count">Changed ${changeCount} time${changeCount !== 1 ? 's' : ''}</span>`;
+                                }
+                                
+                                // Date difference (from first to current)
+                                if (weekSlip && weekSlip.display && weekSlip.display !== 'N/A') {
+                                    display += `<span class="week-slip ${weekSlip.color}">${weekSlip.display}</span>`;
+                                }
+                                
+                                display += '</div>';
                             }
                             
                             display += '</div>';

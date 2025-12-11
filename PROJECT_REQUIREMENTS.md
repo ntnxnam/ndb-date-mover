@@ -102,6 +102,10 @@ A web application for tracking and visualizing JIRA project date movements. The 
 - **Date comparison**: Uses 3-method comparison (normalized ISO, string, formatted) to handle different formats
 - **Format support**: Parser supports dd/mmm/yyyy and dd/mmm/yy formats for accurate comparison
 - **Edge cases**: Handles same date in different formats (e.g., 13/Jun/2025 vs 13/Jun/25) correctly
+- **Change count**: Displays total number of date changes (including reverts: A->B->A = 3 changes)
+- **Date difference**: Calculates and displays difference from first date to current date:
+  - If difference < 7 days: Shows as "X days" (e.g., "4 days")
+  - If difference >= 7 days: Shows as "X weeks" with proper rounding (e.g., "1.5 weeks", "2 weeks")
 - **Visual example**:
   ```
   Target Release Date: 12/25/2024

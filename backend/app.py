@@ -485,6 +485,12 @@ def enrich_issue_with_dates(
                 # Calculate week slip
                 # Use the oldest date from history (first in sorted list) vs current date
                 if date_history and len(date_history) > 0:
+                    # Count total number of changes (including reverts)
+                    # A -> B -> A = 3 changes
+                    change_count = len(date_history)
+                    fields[f"{field_id}_change_count"] = change_count
+                    
+                    # Calculate difference from first date to current date
                     original_date = date_history[0][0]  # First date in history (oldest)
                     current_date_str = str(current_value)
                     
@@ -518,8 +524,13 @@ def enrich_issue_with_dates(
                             "color": "gray",
                         }
                 else:
-                    # No history, so no slip
+                    # No history, so no slip and no changes
+                    fields[f"{field_id}_change_count"] = 0
                     fields[f"{field_id}_week_slip"] = {
+                        "weeks": 0,
+                        "display": "N/A",
+                        "color": "gray",
+                    } = {
                         "weeks": 0,
                         "display": "No history",
                         "color": "gray",

@@ -197,7 +197,19 @@ This document outlines the comprehensive test plan for the JIRA Date Tracking & 
     - Already formatted dates in history
   - **Comparison Methods**: Uses 3-method comparison (normalized ISO, string, formatted)
 
-- ✅ **TC-2.1.7**: Changelog API error handling
+- ✅ **TC-2.1.7**: Change count calculation
+  - Input: Date field with multiple changes including reverts (A->B->A)
+  - Expected: Change count = total number of changes (A->B->A = 3 changes)
+  - Test: Unit (test_date_change_count.py)
+  - **Critical**: Must count ALL changes, even when date reverts to previous value
+
+- ✅ **TC-2.1.8**: Date difference from first to current
+  - Input: First date in history and current date
+  - Expected: Difference calculated and displayed using days/weeks format
+  - Test: Unit (test_date_change_count.py)
+  - **Validation**: < 7 days shows as "X days", >= 7 days shows as "X weeks" with proper rounding
+
+- ✅ **TC-2.1.9**: Changelog API error handling
   - Input: Issue with no changelog access
   - Expected: Graceful error handling
   - Test: Integration

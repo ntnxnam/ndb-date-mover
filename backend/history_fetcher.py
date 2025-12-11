@@ -265,9 +265,14 @@ class HistoryFetcher:
                     field_result["history"] = formatted_history
                     field_result["history_raw"] = raw_history
                     
-                    # Calculate week slip
+                    # Count total number of changes (including reverts)
+                    # A -> B -> A = 3 changes
+                    change_count = len(date_history)
+                    field_result["change_count"] = change_count
+                    
+                    # Calculate difference from first date to current date
                     if date_history:
-                        original_date = date_history[0][0]  # First date in history
+                        original_date = date_history[0][0]  # First date in history (oldest)
                         weeks, week_str = calculate_week_slip(original_date, str(current_value))
                         field_result["week_slip"] = {
                             "weeks": weeks,
@@ -275,6 +280,7 @@ class HistoryFetcher:
                             "color": get_week_slip_color(weeks),
                         }
                     else:
+                        field_result["change_count"] = 0
                         field_result["week_slip"] = {
                             "weeks": 0,
                             "display": "0 weeks",

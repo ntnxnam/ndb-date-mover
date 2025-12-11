@@ -45,7 +45,10 @@ Build a web application that helps Engineering Program Managers track JIRA proje
    - **Date comparison**: Uses 3-method comparison (normalized, string, formatted) to handle different formats
    - **Format support**: Parser supports dd/mmm/yyyy and dd/mmm/yy formats for accurate comparison
    - **Edge cases**: Handles same date in different formats (e.g., 13/Jun/2025 vs 13/Jun/25) correctly
+   - **Change count**: Displays total number of date changes (including reverts: A->B->A = 3 changes)
+   - **Date difference**: Calculates and displays difference from first date to current date (days if < 7, weeks if >= 7)
    - Example display: `15/Jan/2026` (current) with `~~10/Jan/2026~~` `~~05/Jan/2026~~` (history, newest first)
+   - Example metrics: "Changed 3 times" and "+2 weeks" (difference from first to current)
 
 5. **Calendar Week Slip Calculation**
    - Calculate difference between original date (first in history) and current date
