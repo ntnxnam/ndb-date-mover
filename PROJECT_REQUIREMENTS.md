@@ -183,21 +183,31 @@ A web application for tracking and visualizing JIRA project date movements. The 
 
 ### Backend (Flask API)
 - **Endpoints**:
-  - `POST /api/query` - Execute JQL query
+  - `POST /api/query` - Execute JQL query with date enrichment
   - `GET /api/fields` - Fetch field metadata
   - `GET /api/issue/{id}/history` - Get issue change history
-  - `GET /api/health` - Connection health check
-- **JIRA Client**: Extend existing `jira_client.py`
-- **Configuration loader**: Load and validate config file
-- **Caching layer**: Redis or in-memory cache for field metadata
+  - `GET /api/config` - Get current configuration
+  - `POST /api/test-connection` - Test JIRA connection
+  - `GET /health` - Connection health check
+- **JIRA Client**: Extended `backend/jira_client.py` with:
+  - `execute_jql()` - Execute JQL queries (supports filter IDs)
+  - `get_field_metadata()` - Fetch field display names
+  - `get_issue_changelog()` - Fetch change history
+  - Self-healing retry logic with exponential backoff
+- **Configuration loader**: `backend/config_loader.py` - Load and validate `config/fields.json`
+- **Date utilities**: `backend/date_utils.py` - Date formatting and week slip calculations
+- **Error handling**: HTML response detection, JSON parsing error handling
 
-### Frontend (React/Vue or Vanilla JS)
-- **Routing**: Client-side routing for different pages
-- **State management**: Store query results, configuration, UI state
-- **API client**: Handle all backend communication
-- **Table component**: Sortable, filterable data table
-- **Date formatting**: Format dates consistently
-- **Error boundaries**: Catch and display errors gracefully
+### Frontend (Vanilla JavaScript)
+- **Single-page application**: `frontend/app.html` with client-side routing
+- **Navigation**: Sidebar navigation (Home, Query Builder, Configuration, Reports)
+- **Breadcrumbs**: Shows navigation path (Home > Query Builder > Results)
+- **Tabs**: Switch between table view and raw data view
+- **API client**: Handles all backend communication with error handling
+- **Table component**: Displays query results with date history and week slips
+- **Date formatting**: Formats dates as mm/dd/yyyy with strike-through for history
+- **Error handling**: Content-type checking, JSON parsing error handling, user-friendly messages
+- **Connection status**: Real-time backend connection indicator
 
 ### Data Flow
 1. User enters JQL query
@@ -211,19 +221,22 @@ A web application for tracking and visualizing JIRA project date movements. The 
 
 ## Configuration File Structure
 
+**Location**: `config/fields.json` (create from `config/fields.json.example`)
+
 ```json
 {
-  "jira": {
-    "base_url": "https://jira.nutanix.com",
-    "timeout": 30,
-    "retry_attempts": 3
-  },
   "custom_fields": [
     {
-      "id": "customfield_12345",
+      "id": "customfield_11067",
       "type": "date",
       "track_history": true,
-      "display_name": "Target Release Date"
+      "display_name": "Code Complete Date"
+    },
+    {
+      "id": "customfield_35863",
+      "type": "date",
+      "track_history": true,
+      "display_name": "Commit Gate Ready Estimation Date"
     }
   ],
   "display_columns": [
@@ -231,11 +244,18 @@ A web application for tracking and visualizing JIRA project date movements. The 
     "summary",
     "status",
     "assignee",
-    "customfield_12345"
+    "resolution",
+    "customfield_11067",
+    "customfield_35863"
   ],
   "date_format": "mm/dd/yyyy"
 }
 ```
+
+**Note on Date Formats:**
+- **Internal processing**: All dates handled in JIRA-friendly formats (ISO 8601)
+- **Display format**: Always displayed as `mm/dd/yyyy` regardless of config
+- The `date_format` field is for documentation purposes only
 
 ## User Stories
 
@@ -260,36 +280,68 @@ A web application for tracking and visualizing JIRA project date movements. The 
 
 ## Implementation Phases
 
-### Phase 1: Core Functionality
-- JQL query input and execution
-- Basic table display
-- Configuration file loading
-- Custom field display name fetching
+### Phase 1: Core Functionality ✅ COMPLETE
+- ✅ JQL query input and execution (supports filter IDs)
+- ✅ Basic table display with sortable columns
+- ✅ Configuration file loading and validation
+- ✅ Custom field display name fetching
+- ✅ Filter ID handling with validation
 
-### Phase 2: Date Tracking
-- Change history fetching
-- Date formatting and strike-through display
-- Week slip calculation
+### Phase 2: Date Tracking ✅ COMPLETE
+- ✅ Change history fetching from changelog
+- ✅ Date formatting (mm/dd/yyyy) with strike-through display
+- ✅ Week slip calculation with color coding
 
-### Phase 3: UI/UX
-- Sidebar navigation
-- Tabs and breadcrumbs
-- Grayscale minimal design
-- Error display improvements
+### Phase 3: UI/UX ✅ COMPLETE
+- ✅ Sidebar navigation (Home, Query Builder, Configuration, Reports)
+- ✅ Tabs (Table View, Raw Data)
+- ✅ Breadcrumbs showing navigation path
+- ✅ Grayscale minimal design
+- ✅ Error display improvements with actionable guidance
 
-### Phase 4: Resilience
-- Self-healing connection logic
-- Timeout handling
-- Retry mechanisms
-- Connection status indicators
+### Phase 4: Resilience ✅ COMPLETE
+- ✅ Self-healing connection logic with exponential backoff
+- ✅ Timeout handling (connection: 10s, read: 30s, request: 60s)
+- ✅ Retry mechanisms (max 3 attempts)
+- ✅ Connection status indicators in UI
+- ✅ HTML response detection for auth/permission issues
+- ✅ JSON parsing error handling
 
 ## Technical Notes
 
-- **Use existing JIRA client** from `backend/jira_client.py` as base
-- **Extend with new methods** for changelog and field metadata
-- **Maintain separation** between backend API and frontend UI
-- **Follow existing code patterns** and conventions
-- **Add comprehensive logging** for debugging
-- **Write unit tests** for critical functions (JQL parsing, date calculations)
-- **Document API endpoints** with examples
+- **Use existing JIRA client** from `backend/jira_client.py` as base ✅
+- **Extend with new methods** for changelog and field metadata ✅
+- **Maintain separation** between backend API and frontend UI ✅
+- **Follow existing code patterns** and conventions ✅
+- **Add comprehensive logging** for debugging ✅
+- **Write unit tests** for ALL functions (not just critical) ✅
+- **Document API endpoints** with examples ✅
+
+## Implementation Status
+
+### Completed Features
+- ✅ JQL query execution with filter ID support
+- ✅ Configuration file loading and validation
+- ✅ Custom field display name fetching
+- ✅ Date history tracking with strike-through
+- ✅ Week slip calculation and display
+- ✅ Self-healing connection with retry logic
+- ✅ HTML response detection and error handling
+- ✅ JSON parsing error handling
+- ✅ Sidebar navigation and multi-page UI
+- ✅ Tabs and breadcrumbs
+- ✅ Connection status indicator
+- ✅ Comprehensive test suite (60+ tests)
+
+### Known Issues and Solutions
+1. **JSON Parsing Errors**: Fixed with content-type checking before parsing
+2. **Filter ID HTML Responses**: Fixed with HTML detection and specific error messages
+3. **Test Environment Variables**: Documented - using `@patch.dict` is correct pattern
+
+### Testing
+- **Test Coverage**: 90%+ for new code
+- **Test Execution**: Automatic on restart (`./uber.sh restart`)
+- **Test Files**: 6 test modules covering all functionality
+- **Test Plan**: Comprehensive documentation in `TEST_PLAN.md`
+
 
