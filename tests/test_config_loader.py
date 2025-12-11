@@ -121,4 +121,62 @@ class TestConfigLoader:
             assert date_fields[0]["id"] == "customfield_12345"
         finally:
             Path(config_path).unlink()
+    
+    def test_get_display_columns_with_fixversions(self):
+        """Test that fixVersions can be included in display columns."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            config_data = {
+                "custom_fields": [
+                    {"id": "customfield_12345", "type": "date", "track_history": True}
+                ],
+                "display_columns": ["key", "summary", "fixVersions", "customfield_12345"],
+                "date_format": "mm/dd/yyyy"
+            }
+            json.dump(config_data, f)
+            config_path = f.name
+        
+        try:
+            loader = ConfigLoader(config_path)
+            loader.load()
+            columns = loader.get_display_columns()
+            assert "fixVersions" in columns
+        finally:
+            Path(config_path).unlink()
+    
+    def test_custom_fields_with_ai_summarize(self):
+        """Test that custom fields with AI summarization flag are recognized."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            config_data = {
+                "custom_fields": [
+                    {
+                        "id": "customfield_23073",
+                        "type": "text",
+                        "track_history": False,
+                        "display_name": "Status Update",
+                        "ai_summarize": True,
+                        "exec_friendly": True
+                    }
+                ],
+                "display_columns": ["key", "customfield_23073"],
+                "date_format": "mm/dd/yyyy"
+            }
+            json.dump(config_data, f)
+            config_path = f.name
+        
+        try:
+            loader = ConfigLoader(config_path)
+            config = loader.load()
+            custom_fields = config.get("custom_fields", [])
+            
+            # Find Status Update field
+            status_field = next(
+                (f for f in custom_fields if f.get("id") == "customfield_23073"),
+                None
+            )
+            
+            assert status_field is not None
+            assert status_field.get("ai_summarize") is True
+            assert status_field.get("exec_friendly") is True
+        finally:
+            Path(config_path).unlink()
 
