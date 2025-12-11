@@ -374,8 +374,8 @@
                 Home
             </div>
             <div class="connection-status" id="connectionStatus">
-                <div class="status-dot" id="statusDot"></div>
-                <span id="statusText">Checking...</span>
+                <div class="status-dot" id="statusDot" class="disconnected"></div>
+                <span id="statusText">Checking connection...</span>
             </div>
         </div>
 
@@ -465,8 +465,11 @@
     </div>
 
     <script>
-        // Backend API URL
-        const BACKEND_API_URL = window.BACKEND_API_URL || 'http://localhost:8473';
+        // Backend API URL - use same origin if possible, otherwise default to localhost
+        const BACKEND_API_URL = window.BACKEND_API_URL || 
+            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
+                ? 'http://localhost:8473' 
+                : `${window.location.protocol}//${window.location.hostname}:8473`;
 
         // Navigation
         function navigateTo(page) {
@@ -530,28 +533,38 @@
         // Connection status check
         async function checkConnection() {
             try {
-                const response = await fetch(`${BACKEND_API_URL}/health`);
+                const response = await fetch(`${BACKEND_API_URL}/health`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    cache: 'no-cache'
+                });
                 if (response.ok) {
-                    updateConnectionStatus(true);
+                    const data = await response.json();
+                    updateConnectionStatus(true, 'Backend connected');
                 } else {
-                    updateConnectionStatus(false);
+                    updateConnectionStatus(false, 'Backend error');
                 }
             } catch (error) {
-                updateConnectionStatus(false);
+                // Check if it's a network error vs CORS
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    updateConnectionStatus(false, 'Cannot reach backend');
+                } else {
+                    updateConnectionStatus(false, 'Connection error');
+                }
             }
         }
 
-        function updateConnectionStatus(connected) {
+        function updateConnectionStatus(connected, message = null) {
             const dot = document.getElementById('statusDot');
             const text = document.getElementById('statusText');
             if (connected) {
                 dot.classList.add('connected');
                 dot.classList.remove('disconnected');
-                text.textContent = 'Connected';
+                text.textContent = message || 'Connected';
             } else {
                 dot.classList.add('disconnected');
                 dot.classList.remove('connected');
-                text.textContent = 'Disconnected';
+                text.textContent = message || 'Disconnected';
             }
         }
 
@@ -717,8 +730,17 @@
         }
 
         // Initialize
+        // Check connection immediately and then periodically
         checkConnection();
-        setInterval(checkConnection, 30000); // Check every 30 seconds
+        // Check every 10 seconds for more responsive status
+        setInterval(checkConnection, 10000);
+        
+        // Also check when page becomes visible (user switches back to tab)
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                checkConnection();
+            }
+        });
     </script>
 </body>
 </html>
