@@ -267,7 +267,10 @@ class HistoryFetcher:
                     
                     # Count total number of changes (including reverts)
                     # A -> B -> A = 3 changes
-                    change_count = len(date_history)
+                    # Note: date_history includes all dates including current, but formatted_history
+                    # excludes the current date. The number of changes equals the number of
+                    # historical dates (after filtering out current date)
+                    change_count = len(formatted_history)  # This is the count after filtering out current date
                     field_result["change_count"] = change_count
                     
                     # Calculate difference from first date to current date

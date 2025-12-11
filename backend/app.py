@@ -487,7 +487,11 @@ def enrich_issue_with_dates(
                 if date_history and len(date_history) > 0:
                     # Count total number of changes (including reverts)
                     # A -> B -> A = 3 changes
-                    change_count = len(date_history)
+                    # Note: date_history includes all dates including current, so changes = len - 1
+                    # But we need to count actual transitions, so we count unique dates in history
+                    # (excluding current date which is filtered out above)
+                    # The number of changes equals the number of historical dates (after filtering current)
+                    change_count = len(formatted_history)  # This is the count after filtering out current date
                     fields[f"{field_id}_change_count"] = change_count
                     
                     # Calculate difference from first date to current date
@@ -529,10 +533,6 @@ def enrich_issue_with_dates(
                     fields[f"{field_id}_week_slip"] = {
                         "weeks": 0,
                         "display": "N/A",
-                        "color": "gray",
-                    } = {
-                        "weeks": 0,
-                        "display": "No history",
                         "color": "gray",
                     }
                     
