@@ -234,8 +234,14 @@ def execute_query():
             
             # Include display_columns from config so frontend knows which columns to show
             try:
-                result["display_columns"] = config_loader.get_display_columns()
-            except Exception:
+                display_cols = config_loader.get_display_columns()
+                if display_cols:
+                    result["display_columns"] = display_cols
+                else:
+                    logger.warning("No display_columns found in config, using fallback")
+                    result["display_columns"] = None
+            except Exception as e:
+                logger.warning(f"Error getting display_columns: {str(e)}")
                 # Fallback: use all fields if config not available
                 result["display_columns"] = None
             
