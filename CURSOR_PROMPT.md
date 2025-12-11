@@ -22,12 +22,17 @@ Build a web application that helps Engineering Program Managers track JIRA proje
    - Load and validate configuration at startup
 
 3. **Dynamic Field Display Names**
-   - Fetch custom field metadata from JIRA API (`/rest/api/3/field`)
+   - Fetch custom field metadata from JIRA API (`/rest/api/2/field`)
    - Map field IDs to display names automatically
    - Use display names throughout UI (table headers, etc.)
    - Cache metadata to reduce API calls
 
 4. **Date History Tracking**
+   - **JIRA API v2 Changelog Format**: Uses `expand=changelog` parameter (not `/changelog` endpoint)
+   - **Response Structure**: Handles `data['changelog']['histories']` format
+   - **Field ID Resolution**: Resolves field IDs from field metadata when `fieldId` is missing in changelog items
+   - **Field ID Normalization**: Converts numeric IDs (e.g., 11067) to `customfield_` format (e.g., `customfield_11067`)
+   - **Field Matching**: Matches by normalized ID, original ID, numeric ID, or resolved ID
    - For date fields flagged in config, fetch change history from JIRA changelog
    - Display current date prominently
    - Show all historical dates with CSS strike-through
