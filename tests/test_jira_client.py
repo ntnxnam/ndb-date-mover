@@ -79,7 +79,7 @@ class TestJiraClientConnection:
             base_url="https://test.atlassian.net", pat_token="test_token_123"
         )
 
-    @patch("jira_client.requests.Session.get")
+    @patch("backend.jira_client.requests.Session.get")
     def test_connection_success(self, mock_get, client):
         """Test successful connection to JIRA."""
         # Mock successful response
@@ -102,7 +102,7 @@ class TestJiraClientConnection:
         assert result["deployment_type"] == "Cloud"
         mock_get.assert_called_once()
 
-    @patch("jira_client.requests.Session.get")
+    @patch("backend.jira_client.requests.Session.get")
     def test_connection_authentication_failure(self, mock_get, client):
         """Test connection failure due to authentication error (401)."""
         mock_response = Mock()
@@ -116,7 +116,7 @@ class TestJiraClientConnection:
         assert "Authentication failed" in result["message"]
         assert result["status_code"] == 401
 
-    @patch("jira_client.requests.Session.get")
+    @patch("backend.jira_client.requests.Session.get")
     def test_connection_authorization_failure(self, mock_get, client):
         """Test connection failure due to authorization error (403)."""
         mock_response = Mock()
@@ -130,7 +130,7 @@ class TestJiraClientConnection:
         assert "Authorization failed" in result["message"]
         assert result["status_code"] == 403
 
-    @patch("jira_client.requests.Session.get")
+    @patch("backend.jira_client.requests.Session.get")
     def test_connection_other_error_status(self, mock_get, client):
         """Test connection failure with other error status codes."""
         mock_response = Mock()
@@ -145,7 +145,7 @@ class TestJiraClientConnection:
         assert "Connection failed" in result["message"]
         assert result["status_code"] == 500
 
-    @patch("jira_client.requests.Session.get")
+    @patch("backend.jira_client.requests.Session.get")
     def test_connection_timeout(self, mock_get, client):
         """Test connection timeout handling."""
         mock_get.side_effect = Timeout("Connection timeout")
@@ -156,7 +156,7 @@ class TestJiraClientConnection:
         assert result["success"] is False
         assert "timeout" in result["message"].lower()
 
-    @patch("jira_client.requests.Session.get")
+    @patch("backend.jira_client.requests.Session.get")
     def test_connection_error(self, mock_get, client):
         """Test connection error handling."""
         mock_get.side_effect = ConnectionError("Unable to connect")
@@ -167,7 +167,7 @@ class TestJiraClientConnection:
         assert result["success"] is False
         assert "Connection error" in result["message"]
 
-    @patch("jira_client.requests.Session.get")
+    @patch("backend.jira_client.requests.Session.get")
     def test_connection_request_exception(self, mock_get, client):
         """Test general request exception handling."""
         mock_get.side_effect = RequestException("Request failed")
@@ -178,7 +178,7 @@ class TestJiraClientConnection:
         assert result["success"] is False
         assert "Request failed" in result["message"]
 
-    @patch("jira_client.requests.Session.get")
+    @patch("backend.jira_client.requests.Session.get")
     def test_connection_unexpected_exception(self, mock_get, client):
         """Test handling of unexpected exceptions."""
         mock_get.side_effect = Exception("Unexpected error")
@@ -189,7 +189,7 @@ class TestJiraClientConnection:
         assert result["success"] is False
         assert "Unexpected error" in result["message"]
 
-    @patch("jira_client.requests.Session.get")
+    @patch("backend.jira_client.requests.Session.get")
     def test_connection_non_json_error_response(self, mock_get, client):
         """Test handling of non-JSON error responses."""
         mock_response = Mock()
@@ -215,7 +215,7 @@ class TestJiraClientUserInfo:
             base_url="https://test.atlassian.net", pat_token="test_token_123"
         )
 
-    @patch("jira_client.requests.Session.get")
+    @patch("backend.jira_client.requests.Session.get")
     def test_get_user_info_success(self, mock_get, client):
         """Test successful retrieval of user information."""
         mock_response = Mock()
@@ -234,7 +234,7 @@ class TestJiraClientUserInfo:
         assert user_info["emailAddress"] == "test@example.com"
         assert user_info["accountId"] == "12345"
 
-    @patch("jira_client.requests.Session.get")
+    @patch("backend.jira_client.requests.Session.get")
     def test_get_user_info_failure(self, mock_get, client):
         """Test failure to retrieve user information."""
         mock_response = Mock()
@@ -245,7 +245,7 @@ class TestJiraClientUserInfo:
 
         assert user_info is None
 
-    @patch("jira_client.requests.Session.get")
+    @patch("backend.jira_client.requests.Session.get")
     def test_get_user_info_exception(self, mock_get, client):
         """Test exception handling during user info retrieval."""
         mock_get.side_effect = Exception("Error")
@@ -315,7 +315,7 @@ class TestJiraClientIntegration:
             base_url="https://test.atlassian.net", pat_token="test_token_123"
         )
 
-    @patch("jira_client.requests.Session.get")
+    @patch("backend.jira_client.requests.Session.get")
     def test_full_connection_flow(self, mock_get, client):
         """Test the full connection flow including user info."""
         # Mock server info response
