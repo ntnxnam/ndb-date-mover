@@ -154,6 +154,8 @@ def _parse_date(date_str: str) -> Optional[datetime]:
     """
     Parse a date string to datetime object.
     
+    Supports multiple date formats including the display format (dd/mmm/yyyy).
+    
     Args:
         date_str: Date string in various formats
         
@@ -163,13 +165,21 @@ def _parse_date(date_str: str) -> Optional[datetime]:
     if not date_str:
         return None
     
+    # Month abbreviations mapping (for parsing dd/mmm/yyyy format)
+    month_map = {
+        "Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6,
+        "Jul": 7, "Aug": 8, "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12
+    }
+    
     date_formats = [
         "%Y-%m-%dT%H:%M:%S.%f%z",  # ISO with timezone and microseconds
         "%Y-%m-%dT%H:%M:%S%z",      # ISO with timezone (no microseconds)
         "%Y-%m-%dT%H:%M:%S",         # ISO without timezone
         "%Y-%m-%d",                  # Simple date
-        "%d/%m/%Y",                  # DD/MM/YYYY
-        "%m/%d/%Y",                  # MM/DD/YYYY
+        "%d/%m/%Y",                  # DD/MM/YYYY (numeric month)
+        "%m/%d/%Y",                  # MM/DD/YYYY (numeric month)
+        "%d/%b/%Y",                  # DD/Mmm/YYYY (e.g., 13/Jun/2025)
+        "%d/%b/%y",                  # DD/Mmm/YY (e.g., 13/Jun/25)
     ]
     
     for fmt in date_formats:
@@ -177,6 +187,29 @@ def _parse_date(date_str: str) -> Optional[datetime]:
             return datetime.strptime(date_str, fmt)
         except ValueError:
             continue
+    
+    # Try manual parsing for dd/mmm/yyyy format if standard formats fail
+    # This handles cases like "13/Jun/2025" or "13/Jun/25"
+    try:
+        # Pattern: dd/mmm/yyyy or dd/mmm/yy
+        import re
+        match = re.match(r'^(\d{1,2})/([A-Za-z]{3})/(\d{2,4})$', date_str.strip())
+        if match:
+            day = int(match.group(1))
+            month_str = match.group(2).capitalize()
+            year_str = match.group(3)
+            
+            if month_str in month_map:
+                month = month_map[month_str]
+                # Handle 2-digit vs 4-digit year
+                if len(year_str) == 2:
+                    year = 2000 + int(year_str) if int(year_str) < 50 else 1900 + int(year_str)
+                else:
+                    year = int(year_str)
+                
+                return datetime(year, month, day)
+    except (ValueError, AttributeError):
+        pass
     
     return None
 

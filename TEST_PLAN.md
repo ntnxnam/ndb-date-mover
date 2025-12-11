@@ -185,7 +185,19 @@ This document outlines the comprehensive test plan for the JIRA Date Tracking & 
   - Expected: CSS strike-through applied correctly
   - Test: Frontend
 
-- ✅ **TC-2.1.6**: Changelog API error handling
+- ✅ **TC-2.1.6**: Current date exclusion from history (CRITICAL)
+  - Input: Current date and history dates in various formats
+  - Expected: Current date NEVER appears in struck-out history
+  - Test: Unit + Integration (test_date_comparison_fix.py)
+  - **Critical**: Must handle different date formats (ISO, dd/mmm/yyyy, dd/mmm/yy)
+  - **Validation**: Same date in different formats (e.g., 13/Jun/2025 vs 13/Jun/25) must be excluded
+  - **Edge Cases**: 
+    - ISO format vs formatted string
+    - Full year vs short year (2025 vs 25)
+    - Already formatted dates in history
+  - **Comparison Methods**: Uses 3-method comparison (normalized ISO, string, formatted)
+
+- ✅ **TC-2.1.7**: Changelog API error handling
   - Input: Issue with no changelog access
   - Expected: Graceful error handling
   - Test: Integration
@@ -290,8 +302,9 @@ This document outlines the comprehensive test plan for the JIRA Date Tracking & 
 - ✅ **TC-3.2.3**: Date format validation
   - Input: Date values from JIRA API
   - Expected: All dates displayed as dd/mmm/yyyy (e.g., 15/Jan/2026)
-  - Test: Unit (test_frontend_rendering.py)
+  - Test: Unit (test_frontend_rendering.py, test_date_comparison_fix.py)
   - **Validation**: format_date() returns dd/mmm/yyyy format
+  - **Critical**: format_date() must also parse already-formatted dates (dd/mmm/yyyy, dd/mmm/yy)
 
 - ✅ **TC-3.2.4**: Risk Indicator color highlighting
   - Input: Risk Indicator field value (object, array, or string)

@@ -98,7 +98,10 @@ A web application for tracking and visualizing JIRA project date movements. The 
 - **Display current date** prominently
 - **Show historical dates** with strike-through formatting in reverse chronological order (newest first)
 - **Format**: `dd/mmm/yyyy` (e.g., `15/Jan/2026`)
-- **Current date exclusion**: Current date must NOT appear in struck-out history
+- **Current date exclusion**: Current date must NOT appear in struck-out history (CRITICAL)
+- **Date comparison**: Uses 3-method comparison (normalized ISO, string, formatted) to handle different formats
+- **Format support**: Parser supports dd/mmm/yyyy and dd/mmm/yy formats for accurate comparison
+- **Edge cases**: Handles same date in different formats (e.g., 13/Jun/2025 vs 13/Jun/25) correctly
 - **Visual example**:
   ```
   Target Release Date: 12/25/2024

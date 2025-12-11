@@ -42,8 +42,10 @@ def format_date(date_str: str, target_format: str = "dd/mmm/yyyy") -> str:
         "%Y-%m-%dT%H:%M:%S%z",      # ISO with timezone (no microseconds)
         "%Y-%m-%dT%H:%M:%S",         # ISO without timezone
         "%Y-%m-%d",                  # Simple date
-        "%d/%m/%Y",                  # DD/MM/YYYY
-        "%m/%d/%Y",                  # MM/DD/YYYY
+        "%d/%m/%Y",                  # DD/MM/YYYY (numeric month)
+        "%m/%d/%Y",                  # MM/DD/YYYY (numeric month)
+        "%d/%b/%Y",                  # DD/Mmm/YYYY (e.g., 13/Jun/2025)
+        "%d/%b/%y",                  # DD/Mmm/YY (e.g., 13/Jun/25)
     ]
     
     parsed_date = None
@@ -53,6 +55,33 @@ def format_date(date_str: str, target_format: str = "dd/mmm/yyyy") -> str:
             break
         except ValueError:
             continue
+    
+    # Try manual parsing for dd/mmm/yyyy format if standard formats fail
+    # This handles cases where dates are already in display format
+    if not parsed_date:
+        try:
+            import re
+            month_map = {
+                "Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6,
+                "Jul": 7, "Aug": 8, "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12
+            }
+            match = re.match(r'^(\d{1,2})/([A-Za-z]{3})/(\d{2,4})$', date_str.strip())
+            if match:
+                day = int(match.group(1))
+                month_str = match.group(2).capitalize()
+                year_str = match.group(3)
+                
+                if month_str in month_map:
+                    month = month_map[month_str]
+                    # Handle 2-digit vs 4-digit year
+                    if len(year_str) == 2:
+                        year = 2000 + int(year_str) if int(year_str) < 50 else 1900 + int(year_str)
+                    else:
+                        year = int(year_str)
+                    
+                    parsed_date = datetime(year, month, day)
+        except (ValueError, AttributeError):
+            pass
     
     if not parsed_date:
         logger.warning(f"Could not parse date: {date_str}")

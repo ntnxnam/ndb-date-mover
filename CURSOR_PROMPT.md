@@ -41,7 +41,10 @@ Build a web application that helps Engineering Program Managers track JIRA proje
    - **Internal format**: Use JIRA-friendly formats (ISO 8601) for all internal processing
    - **Display format**: Always display dates as `dd/mmm/yyyy` (e.g., `15/Jan/2026`)
    - **History order**: Historical dates displayed in reverse chronological order (newest first, oldest last)
-   - **Current date exclusion**: Current date must NOT appear in struck-out history
+   - **Current date exclusion**: Current date must NOT appear in struck-out history (CRITICAL)
+   - **Date comparison**: Uses 3-method comparison (normalized, string, formatted) to handle different formats
+   - **Format support**: Parser supports dd/mmm/yyyy and dd/mmm/yy formats for accurate comparison
+   - **Edge cases**: Handles same date in different formats (e.g., 13/Jun/2025 vs 13/Jun/25) correctly
    - Example display: `15/Jan/2026` (current) with `~~10/Jan/2026~~` `~~05/Jan/2026~~` (history, newest first)
 
 5. **Calendar Week Slip Calculation**

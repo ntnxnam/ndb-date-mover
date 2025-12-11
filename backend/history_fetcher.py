@@ -233,13 +233,18 @@ class HistoryFetcher:
                                 should_skip = True
                         
                         # Method 3: Compare formatted dates (additional check)
+                        # This catches cases where normalization might have failed but formatted dates match
                         if not should_skip:
                             try:
                                 formatted_date = format_date(date_val, self._date_format)
                                 formatted_current = format_date(current_value_str, self._date_format)
-                                if formatted_date == formatted_current:
+                                # Also normalize the formatted dates for comparison (handles 13/Jun/2025 vs 13/Jun/25)
+                                formatted_norm1 = normalize_date_for_comparison(formatted_date)
+                                formatted_norm2 = normalize_date_for_comparison(formatted_current)
+                                if formatted_date == formatted_current or (formatted_norm1 and formatted_norm2 and formatted_norm1 == formatted_norm2):
                                     should_skip = True
-                            except:
+                            except Exception as e:
+                                logger.debug(f"Error in formatted date comparison: {str(e)}")
                                 pass  # If formatting fails, continue with other checks
                         
                         if should_skip:
