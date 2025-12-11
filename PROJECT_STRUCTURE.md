@@ -8,6 +8,7 @@ ndb-date-mover/
 │   ├── 📄 jira_client.py        # JIRA connection module with self-healing
 │   ├── 📄 config_loader.py      # Configuration file loader and validator
 │   ├── 📄 date_utils.py         # Date formatting and week slip calculations
+│   ├── 📄 history_fetcher.py    # Fetches historical date changes for configured fields
 │   ├── 📄 utils.py              # Shared utility functions (error handling)
 │   └── 📄 __init__.py           # Backend package init
 │
@@ -65,6 +66,11 @@ ndb-date-mover/
   - Loads and validates `config/fields.json`
 - **`backend/date_utils.py`**: Date formatting and week slip calculation utilities
   - Functions: `format_date()`, `calculate_week_slip()`, `extract_date_history()`
+- **`backend/history_fetcher.py`**: Fetches historical date changes from JIRA
+  - `HistoryFetcher` class - Fetches history only for configured date fields
+  - `fetch_history_for_issue()` - Single issue history
+  - `fetch_history_for_issues()` - Batch history for multiple issues
+  - Only processes fields with `track_history=true` from config
 - **`backend/utils.py`**: Shared utility functions for error handling
   - `safe_get_response_text()` - Unified response text extraction
   - `check_html_response()` - HTML response detection
@@ -90,6 +96,7 @@ ndb-date-mover/
 - **`tests/test_date_utils.py`**: Date utility function tests
 - **`tests/test_jira_client_json_parsing.py`**: JSON parsing error handling tests
 - **`tests/test_jira_client_filter.py`**: Filter ID handling tests
+- **`tests/test_history_fetcher.py`**: History fetcher module tests
 
 ### Scripts
 - **`start_backend.sh`**: Start Flask backend server (port 8473)
