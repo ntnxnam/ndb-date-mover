@@ -11,7 +11,7 @@ Author: NDB Date Mover Team
 import logging
 import os
 import time
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from urllib.parse import urljoin, urlparse
 
 import requests

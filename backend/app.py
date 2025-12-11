@@ -179,7 +179,7 @@ def execute_query():
         except Exception as e:
             logger.warning(f"Could not load configuration: {str(e)}")
             date_fields = []
-            date_format = "mm/dd/yyyy"
+            date_format = "mm/dd/yyyy"  # Display format is always mm/dd/yyyy
         
         # Create JIRA client
         client = create_jira_client()

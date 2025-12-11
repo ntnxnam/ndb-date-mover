@@ -28,7 +28,8 @@ Build a web application that helps Engineering Program Managers track JIRA proje
    - For date fields flagged in config, fetch change history from JIRA changelog
    - Display current date prominently
    - Show all historical dates with CSS strike-through
-   - Format: `mm/dd/yyyy` (e.g., `12/25/2024`)
+   - **Internal format**: Use JIRA-friendly formats (ISO 8601) for all internal processing
+   - **Display format**: Always display dates as `mm/dd/yyyy` (e.g., `12/25/2024`)
    - Example display: `12/25/2024 ~~11/15/2024~~ ~~10/01/2024~~`
 
 5. **Calendar Week Slip Calculation**
@@ -101,9 +102,15 @@ Build a web application that helps Engineering Program Managers track JIRA proje
     "summary",
     "status",
     "customfield_12345"
-  ]
+  ],
+  "date_format": "mm/dd/yyyy"
 }
 ```
+
+**Note on Date Formats:**
+- **Internal processing**: All dates are handled in JIRA-friendly formats (ISO 8601) for API communication
+- **Display format**: Dates are always displayed as `mm/dd/yyyy` regardless of configuration
+- The `date_format` field in config is for documentation purposes only; display is always `mm/dd/yyyy`
 
 ### Implementation Priority
 

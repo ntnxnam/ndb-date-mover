@@ -17,12 +17,15 @@ def format_date(date_str: str, target_format: str = "mm/dd/yyyy") -> str:
     """
     Format a date string to the target format.
     
+    Accepts JIRA-friendly formats (ISO 8601) internally and converts to display format.
+    Display format is always mm/dd/yyyy regardless of config.
+    
     Args:
-        date_str: Date string in various formats (ISO, JIRA format, etc.)
-        target_format: Target format (mm/dd/yyyy, yyyy-mm-dd, dd/mm/yyyy)
+        date_str: Date string in JIRA-friendly formats (ISO 8601, etc.)
+        target_format: Target format (ignored - always uses mm/dd/yyyy for display)
         
     Returns:
-        str: Formatted date string
+        str: Formatted date string in mm/dd/yyyy format
     """
     if not date_str:
         return ""
@@ -49,16 +52,9 @@ def format_date(date_str: str, target_format: str = "mm/dd/yyyy") -> str:
         logger.warning(f"Could not parse date: {date_str}")
         return date_str  # Return original if parsing fails
     
-    # Format to target format
-    if target_format == "mm/dd/yyyy":
-        return parsed_date.strftime("%m/%d/%Y")
-    elif target_format == "yyyy-mm-dd":
-        return parsed_date.strftime("%Y-%m-%d")
-    elif target_format == "dd/mm/yyyy":
-        return parsed_date.strftime("%d/%m/%Y")
-    else:
-        # Default to mm/dd/yyyy
-        return parsed_date.strftime("%m/%d/%Y")
+    # Always format to mm/dd/yyyy for display (regardless of target_format parameter)
+    # Internal processing uses JIRA-friendly formats, but display is always mm/dd/yyyy
+    return parsed_date.strftime("%m/%d/%Y")
 
 
 def calculate_week_slip(original_date: str, current_date: str) -> Tuple[int, str]:
