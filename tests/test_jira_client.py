@@ -15,7 +15,7 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from requests.exceptions import Timeout, ConnectionError, RequestException
 
-from jira_client import JiraClient, JiraConnectionError, create_jira_client
+from backend.jira_client import JiraClient, JiraConnectionError, create_jira_client
 
 
 class TestJiraClientInitialization:
