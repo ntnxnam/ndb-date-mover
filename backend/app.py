@@ -344,6 +344,32 @@ def enrich_issue_with_dates(
                     "color": "gray",
                 }
     
+    # Process custom fields that need AI summarization (e.g., status update)
+    # Load all custom fields from config to check for AI summarization flags
+    try:
+        config_loader = ConfigLoader()
+        config = config_loader.load()
+        custom_fields = config.get("custom_fields", [])
+        
+        for custom_field in custom_fields:
+            field_id = custom_field.get("id")
+            if custom_field.get("ai_summarize") or custom_field.get("exec_friendly"):
+                field_value = fields.get(field_id)
+                if field_value:
+                    # Summarize the field value for executive-friendly format
+                    if isinstance(field_value, str):
+                        summarized = summarize_status_update(field_value)
+                        fields[f"{field_id}_summary"] = summarized
+                        fields[f"{field_id}_original"] = field_value  # Keep original for reference
+                    elif isinstance(field_value, dict):
+                        # Handle complex field types (e.g., text fields with HTML)
+                        text_value = field_value.get("value") or str(field_value)
+                        summarized = summarize_status_update(text_value)
+                        fields[f"{field_id}_summary"] = summarized
+                        fields[f"{field_id}_original"] = text_value
+    except Exception as e:
+        logger.warning(f"Error processing AI summarization fields: {str(e)}")
+    
     issue["fields"] = fields
     return issue
 
