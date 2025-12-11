@@ -293,6 +293,8 @@ def enrich_issue_with_dates(
         if include_history and date_field_config.get("track_history"):
             try:
                 # Fetch changelog for this field
+                # Note: We pass field_id to filter, but JIRA may not include fieldId in changelog items
+                # So we also filter by matching the normalized field ID in extract_date_history
                 changelog = client.get_issue_changelog(issue_key, field_id)
                 date_history = extract_date_history(changelog, field_id)
                 

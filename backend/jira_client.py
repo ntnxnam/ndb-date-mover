@@ -548,22 +548,52 @@ class JiraClient:
         """
         Get changelog (change history) for an issue.
         
+        Uses the expand=changelog parameter which is more reliable than the /changelog endpoint.
+        Handles both response formats for compatibility.
+        
+        According to JIRA API v2 documentation:
+        - Changelog items may or may not include "fieldId"
+        - Items always include "field" (field name) and "fieldtype"
+        - For custom fields, fieldId may be numeric (e.g., 11067) or customfield_ format
+        - When fieldId is missing, we resolve it from field metadata using field name
+        
         Args:
             issue_id: JIRA issue key (e.g., "PROJ-123")
-            field_id: Optional specific field ID to filter changes
+            field_id: Optional specific field ID to filter changes (e.g., "customfield_11067")
             
         Returns:
             List[Dict]: List of changes, each containing:
-                - field: Field ID that changed
-                - from: Previous value
-                - to: New value
+                - field: Field ID that changed (normalized to customfield_ format if numeric)
+                - field_original: Original fieldId from changelog (may be None)
+                - field_name: Human-readable field name
+                - fieldtype: Field type (e.g., "custom", "jira")
+                - from: Previous value (fromString)
+                - to: New value (toString)
                 - timestamp: When change occurred
         """
         logger.info(f"Fetching changelog for issue: {issue_id}")
-        endpoint = f"/rest/api/2/issue/{issue_id}/changelog"
+        
+        # Use expand=changelog which is more reliable than /changelog endpoint
+        # Some JIRA instances don't support the /changelog endpoint but support expand
+        endpoint = f"/rest/api/2/issue/{issue_id}"
         url = urljoin(self.base_url, endpoint)
         
-        params = {"maxResults": 1000}  # Get all changes
+        params = {"expand": "changelog", "maxResults": 1000}  # Get all changes
+        
+        # Get field metadata to resolve field IDs from names when needed
+        field_metadata = None
+        field_name_to_id = {}
+        try:
+            field_metadata = self.get_field_metadata()
+            if field_metadata:
+                # Build name-to-ID mapping for quick lookup
+                for fid, field_data in field_metadata.items():
+                    field_name = field_data.get("name", "")
+                    if field_name:
+                        field_name_to_id[field_name] = fid
+                logger.debug(f"Built field name mapping with {len(field_name_to_id)} fields")
+        except Exception as e:
+            logger.warning(f"Could not fetch field metadata for changelog resolution: {str(e)}")
         
         try:
             response = self._make_request_with_retry("GET", url, params=params)
@@ -575,31 +605,73 @@ class JiraClient:
                     data = response.json()
                 except ValueError as e:
                     logger.error(f"Failed to parse JSON response from JIRA changelog: {str(e)}")
-                    try:
-                        response_text = getattr(response, 'text', '')
-                        if response_text:
-                            logger.debug(f"Response text: {response_text[:500]}")
-                    except Exception:
-                        pass
+                    response_text = safe_get_response_text(response, 500)
+                    if response_text:
+                        logger.debug(f"Response text: {response_text}")
                     logger.debug(f"Content-Type: {content_type}")
                     return []
                 
-                histories = data.get("values", [])
+                # Handle both response formats:
+                # 1. expand=changelog format: data['changelog']['histories']
+                # 2. /changelog endpoint format: data['values'] (fallback)
+                changelog_data = data.get("changelog", {})
+                if changelog_data:
+                    histories = changelog_data.get("histories", [])
+                else:
+                    # Fallback to direct /changelog endpoint format
+                    histories = data.get("values", [])
+                
+                if not histories:
+                    logger.debug(f"No changelog history found for issue {issue_id}")
+                    return []
                 
                 # Extract changes
                 changes = []
                 for history in histories:
                     created = history.get("created", "")
-                    for item in history.get("items", []):
+                    items = history.get("items", [])
+                    
+                    for item in items:
+                        # JIRA API v2 changelog structure:
+                        # - item.get("fieldId") may be None, numeric (e.g., 11067), or customfield_ format
+                        # - item.get("field") is the field name (e.g., "Code Complete Date")
+                        # - item.get("fieldtype") indicates field type (e.g., "custom", "jira")
+                        
                         change_field_id = item.get("fieldId")
+                        field_name = item.get("field", "")
+                        field_type = item.get("fieldtype", "")
+                        
+                        # Resolve field ID if missing
+                        resolved_field_id = change_field_id
+                        if not resolved_field_id and field_name and field_name_to_id:
+                            # Try to resolve from field metadata
+                            resolved_field_id = field_name_to_id.get(field_name)
+                            if resolved_field_id:
+                                logger.debug(f"Resolved field ID for '{field_name}': {resolved_field_id}")
+                        
+                        # Normalize fieldId: convert numeric IDs to customfield_ format
+                        # JIRA changelog may return numeric IDs (e.g., "11067") but we need "customfield_11067"
+                        normalized_field_id = self._normalize_field_id(resolved_field_id) if resolved_field_id else field_name
                         
                         # Filter by field_id if provided
-                        if field_id and change_field_id != field_id:
-                            continue
-                            
+                        # Match by: normalized ID, original ID, numeric ID, or resolved ID
+                        if field_id:
+                            field_id_match = (
+                                normalized_field_id == field_id or
+                                resolved_field_id == field_id or
+                                change_field_id == field_id or
+                                (change_field_id and str(change_field_id) == field_id.replace("customfield_", "")) or
+                                (resolved_field_id and str(resolved_field_id) == field_id.replace("customfield_", ""))
+                            )
+                            if not field_id_match:
+                                continue
+                        
                         changes.append({
-                            "field": change_field_id,
-                            "field_name": item.get("field"),
+                            "field": normalized_field_id,  # Use normalized format or field name
+                            "field_original": change_field_id,  # Keep original for reference (may be None)
+                            "field_resolved": resolved_field_id,  # Resolved from metadata if original was None
+                            "field_name": field_name,
+                            "fieldtype": field_type,
                             "from": item.get("fromString"),
                             "to": item.get("toString"),
                             "timestamp": created,
@@ -622,6 +694,56 @@ class JiraClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Request exception fetching changelog: {str(e)}")
             return []
+    
+    def _normalize_field_id(self, field_id) -> str:
+        """
+        Normalize field ID to standard format.
+        
+        JIRA changelog may return numeric IDs for custom fields (e.g., "11067")
+        but we need the standard format (e.g., "customfield_11067").
+        
+        Args:
+            field_id: Field ID from changelog (may be numeric, string, or customfield_ format)
+            
+        Returns:
+            str: Normalized field ID in customfield_ format if numeric, otherwise original
+        """
+        if not field_id:
+            return field_id
+        
+        field_id_str = str(field_id)
+        
+        # If it's a numeric string and looks like a custom field ID, convert to customfield_ format
+        # Custom field IDs are typically 5+ digits
+        if field_id_str.isdigit() and len(field_id_str) >= 4:
+            return f"customfield_{field_id_str}"
+        
+        # If already in customfield_ format, return as-is
+        if field_id_str.startswith("customfield_"):
+            return field_id_str
+        
+        # For standard fields (key, summary, status, etc.), return as-is
+        return field_id_str
+    
+    def _match_field_by_name(self, field_name: str, target_field_id: str) -> bool:
+        """
+        Try to match a field by name when fieldId is not available in changelog.
+        
+        This is a fallback when JIRA changelog doesn't include fieldId.
+        We would need field metadata to do proper matching, but for now
+        this is a simple check.
+        
+        Args:
+            field_name: Field name from changelog
+            target_field_id: Target field ID to match against
+            
+        Returns:
+            bool: True if likely a match (basic heuristic)
+        """
+        # This is a basic heuristic - in practice, you'd need to look up
+        # field metadata to match name to ID
+        # For now, return False to be safe (caller should use field metadata)
+        return False
 
     def close(self):
         """
