@@ -686,9 +686,17 @@
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = issues.map(issue => {
                 const fields = issue.fields || {};
+                
                 return '<tr>' + 
                     columns.map(col => {
-                        const value = fields[col];
+                        // Get the actual field value (handle special fields like 'key' at issue level)
+                        let value;
+                        if (col === 'key') {
+                            value = issue.key || issue.id;
+                        } else {
+                            value = fields[col];
+                        }
+                        
                         let display = '';
 
                         // Check if this is a date field with history
@@ -712,9 +720,9 @@
                             
                             display += '</div>';
                         } else if (value !== null && value !== undefined) {
-                            // Handle object values (like assignee)
+                            // Handle object values (like assignee, status)
                             if (typeof value === 'object') {
-                                display = value.displayName || value.name || JSON.stringify(value);
+                                display = value.displayName || value.name || value.value || JSON.stringify(value);
                             } else {
                                 display = String(value);
                             }
