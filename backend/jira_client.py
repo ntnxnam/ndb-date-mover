@@ -199,8 +199,9 @@ class JiraClient:
         """
         logger.info("Testing JIRA connection...")
 
-        # Use the /rest/api/3/serverInfo endpoint to test connection
-        endpoint = "/rest/api/3/serverInfo"
+        # Use the /rest/api/2/serverInfo endpoint to test connection
+        # Note: Some JIRA instances (like Nutanix) use API v2, not v3
+        endpoint = "/rest/api/2/serverInfo"
         url = urljoin(self.base_url, endpoint)
 
         try:
@@ -310,7 +311,7 @@ class JiraClient:
             Optional[Dict]: User information if successful, None otherwise
         """
         logger.info("Retrieving authenticated user information...")
-        endpoint = "/rest/api/3/myself"
+        endpoint = "/rest/api/2/myself"
         url = urljoin(self.base_url, endpoint)
 
         try:
@@ -370,7 +371,7 @@ class JiraClient:
                     "total": 0,
                 }
         
-        endpoint = "/rest/api/3/search"
+        endpoint = "/rest/api/2/search"
         url = urljoin(self.base_url, endpoint)
         
         params = {
@@ -500,7 +501,7 @@ class JiraClient:
             Dict: Field metadata. If field_id provided, returns single field.
                   If None, returns all fields as a dict keyed by field ID.
         """
-        endpoint = "/rest/api/3/field"
+        endpoint = "/rest/api/2/field"
         url = urljoin(self.base_url, endpoint)
         
         try:
@@ -559,7 +560,7 @@ class JiraClient:
                 - timestamp: When change occurred
         """
         logger.info(f"Fetching changelog for issue: {issue_id}")
-        endpoint = f"/rest/api/3/issue/{issue_id}/changelog"
+        endpoint = f"/rest/api/2/issue/{issue_id}/changelog"
         url = urljoin(self.base_url, endpoint)
         
         params = {"maxResults": 1000}  # Get all changes
