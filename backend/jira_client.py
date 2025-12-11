@@ -470,7 +470,15 @@ class JiraClient:
             response = self._make_request_with_retry("GET", url)
             
             if response.status_code == 200:
-                all_fields = response.json()
+                # Check content type before parsing
+                content_type = response.headers.get("content-type", "").lower()
+                try:
+                    all_fields = response.json()
+                except ValueError as e:
+                    logger.error(f"Failed to parse JSON response from JIRA field metadata: {str(e)}")
+                    logger.debug(f"Response text: {response.text[:500]}")
+                    logger.debug(f"Content-Type: {content_type}")
+                    return {}
                 
                 # Convert to dict keyed by field ID for easy lookup
                 fields_dict = {field["id"]: field for field in all_fields}
