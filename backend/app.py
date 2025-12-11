@@ -229,6 +229,13 @@ def execute_query():
                 for field_id, field_data in field_metadata.items()
             }
             
+            # Include display_columns from config so frontend knows which columns to show
+            try:
+                result["display_columns"] = config_loader.get_display_columns()
+            except Exception:
+                # Fallback: use all fields if config not available
+                result["display_columns"] = None
+            
             return jsonify(result), 200
         finally:
             client.close()

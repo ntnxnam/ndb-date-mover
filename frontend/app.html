@@ -655,18 +655,23 @@
                 return;
             }
 
-            // Get columns from first issue
-            const firstIssue = issues[0];
-            const fields = firstIssue.fields || {};
-            
-            // Determine columns (use config if available, otherwise use issue fields)
-            const columns = Object.keys(fields).filter(key => 
-                !key.includes('_history') && 
-                !key.includes('_week_slip') && 
-                !key.includes('_formatted') &&
-                key !== 'issuetype' &&
-                key !== 'project'
-            );
+            // Use display_columns from config if available, otherwise fallback to all fields
+            let columns = [];
+            if (data.display_columns && Array.isArray(data.display_columns) && data.display_columns.length > 0) {
+                // Use configured columns from config/fields.json
+                columns = data.display_columns;
+            } else {
+                // Fallback: get columns from first issue (for backward compatibility)
+                const firstIssue = issues[0];
+                const fields = firstIssue.fields || {};
+                columns = Object.keys(fields).filter(key => 
+                    !key.includes('_history') && 
+                    !key.includes('_week_slip') && 
+                    !key.includes('_formatted') &&
+                    key !== 'issuetype' &&
+                    key !== 'project'
+                );
+            }
 
             // Build header
             const thead = document.getElementById('tableHead');
