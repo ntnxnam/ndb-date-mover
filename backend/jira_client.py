@@ -534,7 +534,21 @@ class JiraClient:
             response = self._make_request_with_retry("GET", url, params=params)
             
             if response.status_code == 200:
-                data = response.json()
+                # Check content type before parsing
+                content_type = response.headers.get("content-type", "").lower()
+                try:
+                    data = response.json()
+                except ValueError as e:
+                    logger.error(f"Failed to parse JSON response from JIRA changelog: {str(e)}")
+                    try:
+                        response_text = getattr(response, 'text', '')
+                        if response_text:
+                            logger.debug(f"Response text: {response_text[:500]}")
+                    except Exception:
+                        pass
+                    logger.debug(f"Content-Type: {content_type}")
+                    return []
+                
                 histories = data.get("values", [])
                 
                 # Extract changes
