@@ -228,6 +228,13 @@ Build a web application that helps Engineering Program Managers track JIRA proje
 - Test with various JQL query formats
 - Test with different date field configurations
 
+**Environment Variable Handling in Tests:**
+- **Unit tests MUST use `@patch.dict('os.environ', ...)` to mock environment variables**
+- **DO NOT load from `.env` files in unit tests** - this breaks test isolation
+- **Rationale**: Tests should be reproducible, isolated, and not require actual credentials
+- **Pattern**: Mock `os.environ` since `load_dotenv()` loads `.env` into `os.environ`
+- **Production code**: Still uses `.env` files via `load_dotenv()` - this is correct
+
 ### Code Guidelines
 
 - Use existing `jira_client.py` as base, extend with new methods
@@ -239,4 +246,5 @@ Build a web application that helps Engineering Program Managers track JIRA proje
 - **Write tests FIRST (TDD approach) or immediately after implementation**
 - **Update test plans in documentation for each feature**
 - **Ensure all tests pass before committing code**
+- **Test Environment Variables**: Always use `@patch.dict('os.environ', ...)` in unit tests, never load from `.env` files
 

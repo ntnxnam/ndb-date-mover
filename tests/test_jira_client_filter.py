@@ -3,6 +3,13 @@ Unit tests for JIRA Client Filter ID Handling
 
 Tests for handling filter IDs in JQL queries.
 
+Note on Environment Variables:
+- Tests use @patch.dict('os.environ', ...) to mock environment variables
+- This is intentional: unit tests should be isolated and not depend on .env files
+- The JiraClient uses load_dotenv() which loads .env into os.environ
+- Patching os.environ simulates environment variables without requiring .env file
+- This ensures tests are reproducible and don't require actual JIRA credentials
+
 Author: NDB Date Mover Team
 """
 
@@ -25,6 +32,12 @@ class TestJiraClientFilterHandling:
         'JIRA_PAT_TOKEN': 'test_token'
     })
     def test_filter_id_conversion(self):
+        """
+        Test that filter=12345 is converted to filter = 12345.
+        
+        Note: Uses @patch.dict to mock environment variables instead of .env file
+        to ensure test isolation and reproducibility.
+        """
         """Test that filter=12345 is converted to filter = 12345."""
         client = JiraClient()
         
@@ -53,7 +66,11 @@ class TestJiraClientFilterHandling:
         'JIRA_PAT_TOKEN': 'test_token'
     })
     def test_filter_id_invalid_format(self):
-        """Test that invalid filter ID format returns error."""
+        """
+        Test that invalid filter ID format returns error.
+        
+        Note: Uses @patch.dict to mock environment variables instead of .env file.
+        """
         client = JiraClient()
         
         result = client.execute_jql("filter=abc123")
@@ -67,7 +84,11 @@ class TestJiraClientFilterHandling:
         'JIRA_PAT_TOKEN': 'test_token'
     })
     def test_filter_id_html_response(self):
-        """Test handling of HTML response when filter doesn't exist or auth fails."""
+        """
+        Test handling of HTML response when filter doesn't exist or auth fails.
+        
+        Note: Uses @patch.dict to mock environment variables instead of .env file.
+        """
         client = JiraClient()
         
         # Mock HTML response (like login page)
@@ -89,7 +110,11 @@ class TestJiraClientFilterHandling:
         'JIRA_PAT_TOKEN': 'test_token'
     })
     def test_filter_id_with_whitespace(self):
-        """Test filter ID with whitespace is handled correctly."""
+        """
+        Test filter ID with whitespace is handled correctly.
+        
+        Note: Uses @patch.dict to mock environment variables instead of .env file.
+        """
         client = JiraClient()
         
         # Mock successful response
@@ -116,7 +141,11 @@ class TestJiraClientFilterHandling:
         'JIRA_PAT_TOKEN': 'test_token'
     })
     def test_regular_jql_not_affected(self):
-        """Test that regular JQL queries are not affected by filter handling."""
+        """
+        Test that regular JQL queries are not affected by filter handling.
+        
+        Note: Uses @patch.dict to mock environment variables instead of .env file.
+        """
         client = JiraClient()
         
         # Mock successful response
