@@ -384,15 +384,37 @@ class JiraClient:
             content_type = response.headers.get("content-type", "").lower()
             
             if response.status_code == 200:
+                # Check for HTML responses BEFORE attempting JSON parse
+                # HTML usually indicates auth failure, invalid URL, or permission issues
+                if "text/html" in content_type:
+                    response_text = getattr(response, 'text', '') or str(getattr(response, 'content', ''))[:500]
+                    logger.error(f"JIRA returned HTML instead of JSON. This usually indicates:")
+                    logger.error("  1. Authentication failure (redirected to login page)")
+                    logger.error("  2. Invalid JIRA URL")
+                    logger.error("  3. Insufficient permissions for the filter/query")
+                    logger.debug(f"Response preview: {response_text}")
+                    return {
+                        "success": False,
+                        "error": "JIRA returned an HTML page instead of JSON. This usually means:\n"
+                                "- Authentication failed (check your JIRA_PAT_TOKEN)\n"
+                                "- Invalid JIRA URL (check your JIRA_URL)\n"
+                                "- Insufficient permissions for this filter/query\n"
+                                "Please verify your credentials and JIRA URL in the .env file.",
+                        "issues": [],
+                        "total": 0,
+                    }
+                
+                # Now safe to attempt JSON parsing
                 try:
                     data = response.json()
                 except ValueError as e:
                     logger.error(f"Failed to parse JSON response from JIRA: {str(e)}")
-                    logger.debug(f"Response text: {response.text[:500]}")
+                    response_text = getattr(response, 'text', '') or str(getattr(response, 'content', ''))[:500]
+                    logger.debug(f"Response text: {response_text}")
                     logger.debug(f"Content-Type: {content_type}")
                     return {
                         "success": False,
-                        "error": f"JIRA returned invalid response format. Please check your JIRA URL and connection. Response preview: {response.text[:200]}",
+                        "error": f"JIRA returned invalid response format. Please check your JIRA URL and connection. Response preview: {response_text[:200]}",
                         "issues": [],
                         "total": 0,
                     }
