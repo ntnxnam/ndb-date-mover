@@ -54,11 +54,14 @@ def after_request(response):
     """Ensure all API responses are JSON."""
     if request.path.startswith('/api/'):
         # Only set JSON content type if not already set and response has content
-        if response.content_length and 'content-type' not in [h.lower() for h in response.headers.keys()]:
-            response.headers['Content-Type'] = 'application/json'
-        # Ensure JSON content type for all API responses
         if response.content_length:
-            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            # Check if Content-Type is already set (case-insensitive)
+            content_type_set = any(
+                h.lower() == 'content-type' 
+                for h in response.headers.keys()
+            )
+            if not content_type_set:
+                response.headers['Content-Type'] = 'application/json; charset=utf-8'
     return response
 
 
