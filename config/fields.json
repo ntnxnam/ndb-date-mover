@@ -45,6 +45,12 @@
       "ai_summarize": true,
       "show_ai_summary": true,
       "note": "Replace customfield_STATUS_UPDATE with actual field ID from JIRA. This field will be AI-summarized using the prompt from config/ai_prompt.txt. Set show_ai_summary to false to show original text instead of summary."
+    },
+    {
+      "id": "customfield_45660",
+      "type": "date",
+      "track_history": true,
+      "display_name": "Custom Date Field 45660"
     }
   ],
   "display_columns": [
@@ -60,7 +66,8 @@
     "customfield_35863",
     "customfield_35864",
     "customfield_23560",
-    "customfield_23073"
+    "customfield_23073",
+    "customfield_45660"
   ],
   "date_format": "dd/mmm/yyyy"
 }
