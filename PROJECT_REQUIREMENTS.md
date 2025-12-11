@@ -8,6 +8,8 @@ A web application for tracking and visualizing JIRA project date movements. The 
 ### 1. JQL Query Input
 - **Accept JQL queries** from users via UI input field
 - **Support nested filters** in format: `filter=xxxxxxx` (where xxxxxxx is a filter ID)
+- **Support filter with additional clauses**: `filter=12345 ORDER BY fixVersion ASC` or `filter=12345 AND status = Open`
+- **Filter parsing priority**: ORDER BY detected first, then AND/OR clauses
 - **Validate JQL syntax** before submission
 - **Store recent queries** for quick access
 
