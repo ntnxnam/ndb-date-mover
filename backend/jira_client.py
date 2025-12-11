@@ -350,10 +350,22 @@ class JiraClient:
         logger.info(f"Executing JQL query: {jql[:100]}...")
         
         # Handle filter ID format
-        if jql.strip().startswith("filter="):
-            filter_id = jql.strip().replace("filter=", "").strip()
-            jql = f"filter = {filter_id}"
-            logger.info(f"Converted filter ID to JQL: {jql}")
+        # Support both "filter=12345" and "filter=12345" formats
+        jql_stripped = jql.strip()
+        if jql_stripped.startswith("filter="):
+            filter_id = jql_stripped.replace("filter=", "").strip()
+            if filter_id.isdigit():
+                # Convert filter ID to JQL format
+                jql = f"filter = {filter_id}"
+                logger.info(f"Converted filter ID {filter_id} to JQL: {jql}")
+            else:
+                logger.warning(f"Invalid filter ID format: {filter_id}")
+                return {
+                    "success": False,
+                    "error": f"Invalid filter ID format. Filter ID must be numeric, got: {filter_id}",
+                    "issues": [],
+                    "total": 0,
+                }
         
         endpoint = "/rest/api/3/search"
         url = urljoin(self.base_url, endpoint)
