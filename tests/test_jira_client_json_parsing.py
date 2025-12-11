@@ -3,6 +3,13 @@ Unit tests for JIRA Client JSON Parsing Error Handling
 
 Tests for handling non-JSON responses from JIRA API.
 
+Note on Environment Variables:
+- Tests use @patch.dict('os.environ', ...) to mock environment variables
+- This is intentional: unit tests should be isolated and not depend on .env files
+- The JiraClient uses load_dotenv() which loads .env into os.environ
+- Patching os.environ simulates environment variables without requiring .env file
+- This ensures tests are reproducible and don't require actual JIRA credentials
+
 Author: NDB Date Mover Team
 """
 

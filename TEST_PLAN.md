@@ -452,12 +452,40 @@ Please verify your credentials and JIRA URL in the .env file.
 - Sample changelog responses
 - Sample field metadata
 - Sample error responses
+- **Non-JSON responses** (HTML error pages, plain text) for JSON parsing tests
 
 ### Test Fixtures:
 - Valid configuration files
 - Invalid configuration files
 - Various JQL query formats
 - Date history test data
+
+### Environment Variable Handling in Tests:
+**Important**: Unit tests use `@patch.dict('os.environ', ...)` to mock environment variables instead of loading from `.env` files.
+
+**Why Mock Environment Variables?**
+- **Test Isolation**: Tests should not depend on external files like `.env`
+- **Reproducibility**: Tests work the same way for all developers
+- **No Credentials Required**: Tests don't need actual JIRA credentials
+- **Faster Execution**: No file I/O operations during tests
+
+**How It Works:**
+- `JiraClient` uses `load_dotenv()` which loads `.env` into `os.environ`
+- Tests patch `os.environ` to simulate environment variables
+- This is the standard Python testing pattern for environment variables
+- Production code still uses `.env` files via `load_dotenv()`
+
+**Test Pattern:**
+```python
+@patch.dict('os.environ', {
+    'JIRA_URL': 'https://test.atlassian.net',
+    'JIRA_PAT_TOKEN': 'test_token'
+})
+def test_something():
+    client = JiraClient()  # Uses mocked env vars, not .env file
+```
+
+**Note**: This is NOT stale code - it's the correct pattern for unit test isolation.
 
 ---
 
