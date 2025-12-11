@@ -84,16 +84,34 @@ Run tests with coverage:
 pytest --cov=. --cov-report=html
 ```
 
+## Recent Updates
+
+- ✅ JIRA API v2 changelog compliance (uses `expand=changelog`)
+- ✅ HistoryFetcher module for fetching date history
+- ✅ Field ID normalization and resolution
+- ✅ Configurable table columns (only shows configured fields)
+- ✅ Fixed Content-Type header logic in after_request
+- ✅ Fixed pytest coverage configuration paths
+- ✅ Comprehensive test coverage
+
 ## Project Structure
 
 ```
 ndb-date-mover/
-├── app.py                 # Flask application entry point
-├── jira_client.py        # JIRA connection module
-├── tests/                # Test files
-│   └── test_jira_client.py
-├── requirements.txt      # Python dependencies
-├── .env                  # Environment variables (not in git)
-└── README.md            # This file
+├── backend/              # Backend API server
+│   ├── app.py           # Flask application
+│   ├── jira_client.py   # JIRA connection module
+│   ├── config_loader.py # Configuration loader
+│   ├── date_utils.py    # Date utilities
+│   └── history_fetcher.py # History fetcher module
+├── frontend/            # Frontend web server
+│   ├── app.html         # Main application UI
+│   └── server.py        # Static file server
+├── config/              # Configuration files
+│   └── fields.json      # Field configuration
+├── tests/               # Test files
+├── requirements.txt     # Python dependencies
+├── .env                 # Environment variables (not in git)
+└── README.md           # This file
 ```
 
