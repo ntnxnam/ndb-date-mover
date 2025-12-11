@@ -381,6 +381,44 @@ This document outlines the comprehensive test plan for the JIRA Date Tracking & 
 
 ---
 
+## Known Issues and Fixes
+
+### Issue: JSON Parsing Errors
+**Problem**: JIRA API sometimes returns non-JSON responses (HTML error pages, plain text, etc.) which caused "Expecting value: line 8 column 1 (char 7)" errors when parsed as JSON.
+
+**Solution Implemented**:
+- Check `Content-Type` header before parsing JSON
+- Handle JSON parsing errors gracefully with try-catch
+- Provide user-friendly error messages with response preview
+- Test cases added: TC-1.1.6, TC-4.2.6
+
+**Test Coverage**: All JSON parsing operations must verify content-type before parsing.
+
+### Issue: Filter ID HTML Response
+**Problem**: When using filter IDs (e.g., `filter=165194`), JIRA sometimes returns HTML pages instead of JSON, typically due to:
+- Authentication failures (redirected to login page)
+- Invalid JIRA URL configuration
+- Insufficient permissions for the filter
+- Filter doesn't exist or is not accessible
+
+**Solution Implemented**:
+- Detect HTML responses by checking `Content-Type` header **before** attempting JSON parse
+- Provide specific error messages for HTML responses with actionable guidance
+- Validate filter ID format (must be numeric) before API call
+- Guide users to check authentication, URL, and permissions
+- Test cases added: TC-1.1.7, TC-1.1.8, TC-1.1.9
+
+**Test Coverage**: Filter ID handling must validate format and handle HTML responses gracefully.
+
+**Error Message Example**:
+```
+JIRA returned an HTML page instead of JSON. This usually means:
+- Authentication failed (check your JIRA_PAT_TOKEN)
+- Invalid JIRA URL (check your JIRA_URL)
+- Insufficient permissions for this filter/query
+Please verify your credentials and JIRA URL in the .env file.
+```
+
 ## Test Execution Checklist
 
 ### Before Each Commit:
