@@ -87,6 +87,7 @@ Build a web application that helps Engineering Program Managers track JIRA proje
 - ✅ Created configuration loader (`backend/config_loader.py`)
 - ✅ Created date utilities (`backend/date_utils.py`)
 - ✅ Created history fetcher (`backend/history_fetcher.py`) - Fetches history for configured date fields
+- ✅ Created AI summarizer (`backend/ai_summarizer.py`) - Executive-friendly text summarization
 - ✅ Created shared utilities (`backend/utils.py`) - Error handling helpers
 - ✅ Endpoints implemented:
   - `POST /api/query` - Execute JQL with date enrichment

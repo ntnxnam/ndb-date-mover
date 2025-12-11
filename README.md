@@ -90,8 +90,13 @@ pytest --cov=. --cov-report=html
 - ✅ HistoryFetcher module for fetching date history
 - ✅ Field ID normalization and resolution
 - ✅ Configurable table columns (only shows configured fields)
+- ✅ Added fixVersions field support
+- ✅ Added Risk Indicator field (customfield_23560)
+- ✅ Added Status Update field with AI summarization (customfield_23073)
+- ✅ AI summarization module for executive-friendly text summaries
 - ✅ Fixed Content-Type header logic in after_request
 - ✅ Fixed pytest coverage configuration paths
+- ✅ Fixed config file invalid control character
 - ✅ Comprehensive test coverage
 
 ## Project Structure

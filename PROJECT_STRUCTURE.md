@@ -9,6 +9,7 @@ ndb-date-mover/
 │   ├── 📄 config_loader.py      # Configuration file loader and validator
 │   ├── 📄 date_utils.py         # Date formatting and week slip calculations
 │   ├── 📄 history_fetcher.py    # Fetches historical date changes for configured fields
+│   ├── 📄 ai_summarizer.py     # AI summarization for executive-friendly text
 │   ├── 📄 utils.py              # Shared utility functions (error handling)
 │   └── 📄 __init__.py           # Backend package init
 │

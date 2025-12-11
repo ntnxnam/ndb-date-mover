@@ -332,6 +332,23 @@ A web application for tracking and visualizing JIRA project date movements. The 
 - ✅ Tabs and breadcrumbs
 - ✅ Connection status indicator
 - ✅ Comprehensive test suite (60+ tests)
+- ✅ fixVersions field support
+- ✅ Risk Indicator field (customfield_23560)
+- ✅ Status Update field with AI summarization (customfield_23073)
+- ✅ AI summarization module for executive-friendly text
+
+### Recent Features Added (2024)
+
+**New Fields:**
+- ✅ **fixVersions** - Standard JIRA field for version tracking
+- ✅ **customfield_23560** - Risk Indicator field
+- ✅ **customfield_23073** - Status Update field with AI summarization
+
+**AI Summarization:**
+- ✅ Created `backend/ai_summarizer.py` module
+- ✅ Executive-friendly text summarization (max 200 characters)
+- ✅ Frontend displays summary with expandable full text
+- ✅ Configurable via `ai_summarize` and `exec_friendly` flags
 
 ### Recent Bug Fixes
 
@@ -346,6 +363,12 @@ A web application for tracking and visualizing JIRA project date movements. The 
 - **Fix**: Updated to `backend.jira_client` and `backend.app`
 - **Status**: ✅ Fixed
 - **Commit**: 3873a1f
+
+### Bug Fix 3: Config File Invalid Control Character
+- **Issue**: Tab character in config/fields.json causing JSON parsing errors
+- **Fix**: Removed invalid control character
+- **Status**: ✅ Fixed
+- **Commit**: 9bb8f3c
 
 ## Known Issues and Solutions
 1. **JSON Parsing Errors**: Fixed with content-type checking before parsing
