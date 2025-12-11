@@ -94,8 +94,9 @@ A web application for tracking and visualizing JIRA project date movements. The 
 - **Fetch change history** from JIRA API (`/rest/api/3/issue/{issueId}/changelog`)
 - **Track all date changes** for flagged fields
 - **Display current date** prominently
-- **Show historical dates** with strike-through formatting
-- **Format**: `mm/dd/yyyy` (e.g., `12/25/2024`)
+- **Show historical dates** with strike-through formatting in reverse chronological order (newest first)
+- **Format**: `dd/mmm/yyyy` (e.g., `15/Jan/2026`)
+- **Current date exclusion**: Current date must NOT appear in struck-out history
 - **Visual example**:
   ```
   Target Release Date: 12/25/2024

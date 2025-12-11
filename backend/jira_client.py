@@ -143,6 +143,12 @@ class JiraClient:
                 # Make the request
                 response = self.session.request(method, url, timeout=self.timeout, **kwargs)
                 
+                # Don't retry on authentication/authorization errors (401, 403) - these won't succeed
+                if response.status_code in [401, 403]:
+                    logger.error(f"Authentication/authorization error {response.status_code}, not retrying")
+                    self._session_stale = False
+                    return response
+                
                 # If successful, mark session as healthy
                 if response.status_code < 500:
                     self._session_stale = False
@@ -353,23 +359,65 @@ class JiraClient:
         """
         logger.info(f"Executing JQL query: {jql[:100]}...")
         
-        # Handle filter ID format
-        # Support both "filter=12345" and "filter=12345" formats
+        # Handle filter reference format
+        # Support:
+        # - filter=12345 (numeric filter ID)
+        # - filter = 12345 (with spaces)
+        # - filter="Filter Name" (named filter with quotes)
+        # - filter=FilterName (named filter without spaces)
+        # - filter = "Filter Name" (with spaces)
+        # - filter=12345 AND additional clauses (filter with additional JQL)
+        import re
         jql_stripped = jql.strip()
-        if jql_stripped.startswith("filter="):
-            filter_id = jql_stripped.replace("filter=", "").strip()
-            if filter_id.isdigit():
-                # Convert filter ID to JQL format
-                jql = f"filter = {filter_id}"
-                logger.info(f"Converted filter ID {filter_id} to JQL: {jql}")
+        
+        # Match filter= or filter = (case insensitive, with optional spaces)
+        filter_match = re.match(r'^filter\s*=\s*(.+)$', jql_stripped, re.IGNORECASE)
+        if filter_match:
+            # Extract filter reference and any additional JQL
+            filter_part = filter_match.group(1).strip()
+            
+            # Check if there's additional JQL after the filter
+            # Look for AND/OR keywords that indicate additional clauses
+            additional_jql = None
+            filter_id_or_name = filter_part
+            
+            # Try to split on AND/OR (case insensitive)
+            # Match " and " or " AND " or " or " or " OR " with spaces
+            # Pattern: space, then AND/OR (case insensitive), then space
+            # This ensures we don't match "and" inside words
+            match = re.search(r'\s+(AND|OR)\s+', filter_part, re.IGNORECASE)
+            if match:
+                split_pos = match.start()
+                filter_id_or_name = filter_part[:split_pos].strip()
+                additional_jql = filter_part[split_pos:].strip()
+                # Normalize AND/OR to uppercase for consistency
+                additional_jql = re.sub(r'\b(and|or)\b', lambda m: m.group(1).upper(), additional_jql, flags=re.IGNORECASE)
+            
+            # Remove quotes if present for processing, but preserve them if they were there
+            is_quoted = False
+            if filter_id_or_name.startswith('"') and filter_id_or_name.endswith('"'):
+                is_quoted = True
+                filter_id_or_name = filter_id_or_name[1:-1].strip()  # Remove quotes
+            
+            # Handle numeric filter ID
+            if filter_id_or_name.isdigit():
+                jql = f"filter = {filter_id_or_name}"
+                if additional_jql:
+                    jql = f"{jql} {additional_jql}"
+                logger.info(f"Converted numeric filter ID {filter_id_or_name} to JQL: {jql}")
+            # Handle named filter
             else:
-                logger.warning(f"Invalid filter ID format: {filter_id}")
-                return {
-                    "success": False,
-                    "error": f"Invalid filter ID format. Filter ID must be numeric, got: {filter_id}",
-                    "issues": [],
-                    "total": 0,
-                }
+                # If it was quoted or contains spaces/special chars, quote it
+                if is_quoted or ' ' in filter_id_or_name or not filter_id_or_name.replace('_', '').replace('-', '').isalnum():
+                    jql = f'filter = "{filter_id_or_name}"'
+                else:
+                    # Simple name without spaces - can be unquoted or quoted (JIRA accepts both)
+                    # Quote it for safety
+                    jql = f'filter = "{filter_id_or_name}"'
+                
+                if additional_jql:
+                    jql = f"{jql} {additional_jql}"
+                logger.info(f"Converted filter name to JQL: {jql}")
         
         endpoint = "/rest/api/2/search"
         url = urljoin(self.base_url, endpoint)
@@ -571,7 +619,7 @@ class JiraClient:
                 - to: New value (toString)
                 - timestamp: When change occurred
         """
-        logger.info(f"Fetching changelog for issue: {issue_id}")
+        logger.debug(f"Fetching changelog for issue: {issue_id} (field_id: {field_id})")
         
         # Use expand=changelog which is more reliable than /changelog endpoint
         # Some JIRA instances don't support the /changelog endpoint but support expand
@@ -596,7 +644,14 @@ class JiraClient:
             logger.warning(f"Could not fetch field metadata for changelog resolution: {str(e)}")
         
         try:
-            response = self._make_request_with_retry("GET", url, params=params)
+            # Changelog requests can take longer, use extended timeout
+            # Temporarily increase timeout for this request
+            original_timeout = self.timeout
+            self.timeout = 30  # 30 seconds for changelog requests
+            try:
+                response = self._make_request_with_retry("GET", url, params=params)
+            finally:
+                self.timeout = original_timeout  # Restore original timeout
             
             if response.status_code == 200:
                 # Check content type before parsing

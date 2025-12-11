@@ -15,3 +15,7 @@ pytest-mock==3.12.0
 black==23.12.1
 flake8==7.0.0
 
+# AI/LLM Integration
+anthropic==0.34.0
+openai==1.54.0  # Optional: for OpenAI API fallback
+

@@ -171,6 +171,45 @@
         .form-group textarea {
             min-height: 100px;
             resize: vertical;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* JQL Autocomplete */
+        .autocomplete-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .autocomplete-suggestion {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+
+        .autocomplete-suggestion:hover,
+        .autocomplete-suggestion.selected {
+            background: #f0f0f0;
+        }
+
+        .autocomplete-suggestion .keyword {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .autocomplete-suggestion .description {
+            font-size: 0.85em;
+            color: #666;
+            margin-left: 8px;
         }
 
         .btn {
@@ -201,8 +240,21 @@
         .table-container {
             background: #fff;
             border-radius: 4px;
-            overflow: hidden;
+            overflow-x: auto;
+            overflow-y: visible;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            max-width: 100%;
+        }
+        
+        .table-container table {
+            min-width: 100%;
+            white-space: nowrap;
+        }
+        
+        .table-container td {
+            white-space: normal;
+            word-wrap: break-word;
+            max-width: 300px;
         }
 
         table {
@@ -252,11 +304,15 @@
         .date-history {
             font-size: 0.85em;
             color: #999;
+            display: block;
+            margin-top: 4px;
+            line-height: 1.6;
         }
 
         .date-history span {
             text-decoration: line-through;
-            margin-right: 8px;
+            display: block;
+            margin-bottom: 2px;
         }
 
         .week-slip {
@@ -280,6 +336,34 @@
         .week-slip.gray {
             color: #666;
             background: #f5f5f5;
+        }
+
+        /* Risk Indicator Color Highlighting */
+        .risk-indicator {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: 500;
+            text-align: center;
+            min-width: 60px;
+        }
+
+        .risk-indicator.red {
+            background-color: #fee2e2; /* Soft red background */
+            color: #991b1b; /* Dark red text */
+            border: 1px solid #fecaca; /* Lighter red border */
+        }
+
+        .risk-indicator.yellow {
+            background-color: #fef3c7; /* Soft yellow background */
+            color: #92400e; /* Dark yellow/brown text */
+            border: 1px solid #fde68a; /* Lighter yellow border */
+        }
+
+        .risk-indicator.green {
+            background-color: #d1fae5; /* Soft green background */
+            color: #065f46; /* Dark green text */
+            border: 1px solid #a7f3d0; /* Lighter green border */
         }
 
         /* Alerts */
@@ -400,10 +484,18 @@
                 
                 <div class="form-group" style="margin-top: 20px;">
                     <label for="jqlInput">JQL Query</label>
-                    <textarea 
-                        id="jqlInput" 
-                        placeholder='Enter JQL query (e.g., project = PROJ AND status = "In Progress") or filter ID (e.g., filter=12345)'
-                    ></textarea>
+                    <div style="position: relative;">
+                        <textarea 
+                            id="jqlInput" 
+                            placeholder='Enter JQL query (e.g., project = PROJ AND status = "In Progress") or filter (e.g., filter=12345 or filter="Filter Name")'
+                            autocomplete="off"
+                            spellcheck="false"
+                        ></textarea>
+                        <div id="jqlAutocomplete" class="autocomplete-suggestions" style="display: none;"></div>
+                    </div>
+                    <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
+                        💡 Tip: Use <code>filter="Filter Name"</code> for named filters, or <code>filter=12345</code> for numeric filter IDs
+                    </div>
                 </div>
 
                 <div style="display: flex; gap: 10px; margin-bottom: 20px;">
@@ -422,6 +514,21 @@
                     </div>
 
                     <div id="tab-table" class="tab-content">
+                        <!-- Pagination Controls -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 10px; background: #f8f8f8; border-radius: 4px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <label for="pageSize">Records per page:</label>
+                                <select id="pageSize" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 3px;">
+                                    <option value="10">10</option>
+                                    <option value="25" selected>25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                    <option value="200">200</option>
+                                </select>
+                            </div>
+                            <div id="paginationInfo" style="color: #666; font-size: 0.9em;"></div>
+                            <div id="paginationControls" style="display: flex; gap: 5px;"></div>
+                        </div>
                         <div class="table-container">
                             <table id="resultsTable">
                                 <thead id="tableHead"></thead>
@@ -568,6 +675,190 @@
             }
         }
 
+        // JQL Autocomplete
+        const JQL_KEYWORDS = [
+            { keyword: 'project', description: 'Filter by project' },
+            { keyword: 'status', description: 'Filter by status' },
+            { keyword: 'assignee', description: 'Filter by assignee' },
+            { keyword: 'type', description: 'Filter by issue type' },
+            { keyword: 'fixVersion', description: 'Filter by fix version' },
+            { keyword: 'priority', description: 'Filter by priority' },
+            { keyword: 'created', description: 'Filter by creation date' },
+            { keyword: 'updated', description: 'Filter by update date' },
+            { keyword: 'resolved', description: 'Filter by resolution date' },
+            { keyword: 'filter', description: 'Use saved filter (filter=12345 or filter="Name")' },
+            { keyword: 'AND', description: 'Logical AND operator' },
+            { keyword: 'OR', description: 'Logical OR operator' },
+            { keyword: 'NOT', description: 'Logical NOT operator' },
+            { keyword: 'IN', description: 'IN operator (e.g., status IN ("Open", "In Progress"))' },
+            { keyword: 'ORDER BY', description: 'Sort results (e.g., ORDER BY created DESC)' },
+            { keyword: '=', description: 'Equals operator' },
+            { keyword: '!=', description: 'Not equals operator' },
+            { keyword: '~', description: 'Contains operator (text search)' },
+            { keyword: 'IS', description: 'IS operator (e.g., status IS EMPTY)' },
+            { keyword: 'IS NOT', description: 'IS NOT operator' },
+        ];
+
+        let autocompleteSelectedIndex = -1;
+        let currentSuggestions = [];
+
+        function setupJQLAutocomplete() {
+            const jqlInput = document.getElementById('jqlInput');
+            const autocomplete = document.getElementById('jqlAutocomplete');
+
+            jqlInput.addEventListener('input', function(e) {
+                const value = e.target.value;
+                const cursorPos = e.target.selectionStart;
+                
+                // Get the word being typed - improved to handle special characters
+                const textBeforeCursor = value.substring(0, cursorPos);
+                
+                // Try multiple patterns to find the current word
+                let currentWord = '';
+                let wordStart = cursorPos;
+                
+                // Pattern 1: Standard word characters (letters, digits, underscore)
+                let match = textBeforeCursor.match(/([\w-]+)$/);
+                if (match) {
+                    currentWord = match[1];
+                    wordStart = cursorPos - currentWord.length;
+                } else {
+                    // Pattern 2: After filter=, match filter name (can contain dashes, underscores)
+                    match = textBeforeCursor.match(/filter\s*=\s*([\w-]+)$/i);
+                    if (match) {
+                        currentWord = match[1];
+                        wordStart = cursorPos - currentWord.length;
+                    } else {
+                        // Pattern 3: Inside quotes after filter=", match quoted filter name
+                        match = textBeforeCursor.match(/filter\s*=\s*"([^"]*)$/i);
+                        if (match) {
+                            currentWord = match[1];
+                            wordStart = cursorPos - currentWord.length;
+                        } else {
+                            // Pattern 4: After operators like =, !=, ~, IN, etc.
+                            match = textBeforeCursor.match(/[=!~<>]+\s*([\w-]+)$/i);
+                            if (match) {
+                                currentWord = match[1];
+                                wordStart = cursorPos - currentWord.length;
+                            }
+                        }
+                    }
+                }
+                
+                // Show autocomplete if we have a word to match
+                if (currentWord.length >= 1) {
+                    // Find matching keywords (case-insensitive)
+                    const suggestions = JQL_KEYWORDS.filter(item => 
+                        item.keyword.toLowerCase().startsWith(currentWord.toLowerCase())
+                    ).slice(0, 5); // Limit to 5 suggestions
+                    
+                    if (suggestions.length > 0) {
+                        currentSuggestions = suggestions;
+                        autocompleteSelectedIndex = -1;
+                        showAutocomplete(suggestions, currentWord, cursorPos);
+                    } else {
+                        hideAutocomplete();
+                    }
+                } else {
+                    hideAutocomplete();
+                }
+            });
+
+            jqlInput.addEventListener('keydown', function(e) {
+                if (autocomplete.style.display === 'none') return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    autocompleteSelectedIndex = Math.min(autocompleteSelectedIndex + 1, currentSuggestions.length - 1);
+                    updateAutocompleteSelection();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    autocompleteSelectedIndex = Math.max(autocompleteSelectedIndex - 1, -1);
+                    updateAutocompleteSelection();
+                } else if (e.key === 'Enter' && autocompleteSelectedIndex >= 0) {
+                    e.preventDefault();
+                    insertSuggestion(currentSuggestions[autocompleteSelectedIndex].keyword);
+                } else if (e.key === 'Escape') {
+                    hideAutocomplete();
+                }
+            });
+
+            // Hide autocomplete when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!jqlInput.contains(e.target) && !autocomplete.contains(e.target)) {
+                    hideAutocomplete();
+                }
+            });
+        }
+
+        function showAutocomplete(suggestions, currentWord, cursorPos) {
+            const autocomplete = document.getElementById('jqlAutocomplete');
+            autocomplete.innerHTML = suggestions.map((item, index) => 
+                `<div class="autocomplete-suggestion ${index === 0 ? 'selected' : ''}" data-index="${index}">
+                    <span class="keyword">${item.keyword}</span>
+                    <span class="description">${item.description}</span>
+                </div>`
+            ).join('');
+            
+            autocomplete.style.display = 'block';
+            
+            // Add click handlers
+            autocomplete.querySelectorAll('.autocomplete-suggestion').forEach((el, index) => {
+                el.addEventListener('click', () => {
+                    insertSuggestion(suggestions[index].keyword);
+                });
+            });
+        }
+
+        function updateAutocompleteSelection() {
+            const suggestions = autocomplete.querySelectorAll('.autocomplete-suggestion');
+            suggestions.forEach((el, index) => {
+                if (index === autocompleteSelectedIndex) {
+                    el.classList.add('selected');
+                    el.scrollIntoView({ block: 'nearest' });
+                } else {
+                    el.classList.remove('selected');
+                }
+            });
+        }
+
+        function insertSuggestion(keyword) {
+            const jqlInput = document.getElementById('jqlInput');
+            const value = jqlInput.value;
+            const cursorPos = jqlInput.selectionStart;
+            
+            const textBeforeCursor = value.substring(0, cursorPos);
+            
+            // Use the same pattern matching as in the input handler
+            let match = textBeforeCursor.match(/([\w-]+)$/);
+            if (!match) {
+                match = textBeforeCursor.match(/filter\s*=\s*([\w-]+)$/i);
+            }
+            if (!match) {
+                match = textBeforeCursor.match(/filter\s*=\s*"([^"]*)$/i);
+            }
+            if (!match) {
+                match = textBeforeCursor.match(/[=!~<>]+\s*([\w-]+)$/i);
+            }
+            
+            if (match) {
+                const startPos = cursorPos - match[1].length;
+                const newValue = value.substring(0, startPos) + keyword + value.substring(cursorPos);
+                jqlInput.value = newValue;
+                jqlInput.setSelectionRange(startPos + keyword.length, startPos + keyword.length);
+            }
+            
+            hideAutocomplete();
+            jqlInput.focus();
+        }
+
+        function hideAutocomplete() {
+            const autocomplete = document.getElementById('jqlAutocomplete');
+            autocomplete.style.display = 'none';
+            autocompleteSelectedIndex = -1;
+            currentSuggestions = [];
+        }
+
         // Query execution
         async function executeQuery() {
             const jql = document.getElementById('jqlInput').value.trim();
@@ -575,6 +866,9 @@
             const loading = document.getElementById('queryLoading');
             const results = document.getElementById('queryResults');
             const error = document.getElementById('queryError');
+
+            // Hide autocomplete when executing
+            hideAutocomplete();
 
             if (!jql) {
                 error.textContent = 'Please enter a JQL query';
@@ -589,6 +883,10 @@
             error.classList.add('hidden');
 
             try {
+                // Create AbortController for timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+                
                 const response = await fetch(`${BACKEND_API_URL}/api/query`, {
                     method: 'POST',
                     headers: {
@@ -598,8 +896,11 @@
                         jql: jql,
                         max_results: 100,
                         include_history: true
-                    })
+                    }),
+                    signal: controller.signal
                 });
+                
+                clearTimeout(timeoutId);
 
                 // Check if response is OK
                 if (!response.ok) {
@@ -633,50 +934,87 @@
                     error.classList.remove('hidden');
                 }
             } catch (err) {
-                error.textContent = `Error: ${err.message}`;
+                // Clear timeout if it exists
+                if (typeof timeoutId !== 'undefined') {
+                    clearTimeout(timeoutId);
+                }
+                
+                let errorMessage = err.message;
+                if (err.name === 'AbortError' || err.message.includes('aborted')) {
+                    errorMessage = 'Request timed out after 2 minutes. The query may be processing too many issues. Try reducing max_results or disabling history fetching.';
+                } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+                    errorMessage = `Cannot connect to backend server. Make sure the backend server is running at ${BACKEND_API_URL}`;
+                }
+                error.textContent = `Error: ${errorMessage}`;
                 error.classList.remove('hidden');
+                results.classList.add('hidden');
             } finally {
+                // Always re-enable button and hide loading, even on timeout
                 button.disabled = false;
                 loading.classList.add('hidden');
             }
         }
 
+        // Pagination state
+        let currentPage = 1;
+        let pageSize = 25;
+        let allIssues = [];
+
         function displayResults(data) {
-            const issues = data.issues || [];
-            const fieldMetadata = data.field_metadata || {};
+            allIssues = data.issues || [];
+            window.fieldMetadata = data.field_metadata || {};
+            window.displayColumns = data.display_columns || [];
 
             // Display raw data
             document.getElementById('rawData').textContent = JSON.stringify(data, null, 2);
 
+            // Reset pagination
+            currentPage = 1;
+            pageSize = parseInt(document.getElementById('pageSize').value) || 25;
+
             // Build table
-            if (issues.length === 0) {
+            if (allIssues.length === 0) {
                 document.getElementById('tableBody').innerHTML = 
                     '<tr><td colspan="100%" style="text-align: center; padding: 40px; color: #666;">No issues found</td></tr>';
+                document.getElementById('paginationInfo').textContent = '';
+                document.getElementById('paginationControls').innerHTML = '';
                 return;
             }
 
+            // Render table with pagination
+            renderTablePage(allIssues, window.fieldMetadata);
+        }
+
+        function renderTablePage(issues, fieldMetadata) {
+            // Calculate pagination
+            const totalPagesCount = Math.ceil(issues.length / pageSize);
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, issues.length);
+            const pageIssues = issues.slice(startIndex, endIndex);
+
             // Use display_columns from config if available, otherwise fallback to all fields
-            let columns = [];
-            if (data.display_columns && Array.isArray(data.display_columns) && data.display_columns.length > 0) {
-                // Use configured columns from config/fields.json
-                columns = data.display_columns;
-            } else {
-                // Fallback: get columns from first issue (for backward compatibility)
-                const firstIssue = issues[0];
+            let tableColumns = [];
+            if (allIssues.length > 0) {
+                const firstIssue = allIssues[0];
                 const fields = firstIssue.fields || {};
-                columns = Object.keys(fields).filter(key => 
-                    !key.includes('_history') && 
-                    !key.includes('_week_slip') && 
-                    !key.includes('_formatted') &&
-                    key !== 'issuetype' &&
-                    key !== 'project'
-                );
+                // Check if we stored display_columns in the data
+                if (window.displayColumns && Array.isArray(window.displayColumns) && window.displayColumns.length > 0) {
+                    tableColumns = window.displayColumns;
+                } else {
+                    tableColumns = Object.keys(fields).filter(key => 
+                        !key.includes('_history') && 
+                        !key.includes('_week_slip') && 
+                        !key.includes('_formatted') &&
+                        key !== 'issuetype' &&
+                        key !== 'project'
+                    );
+                }
             }
 
             // Build header
             const thead = document.getElementById('tableHead');
             thead.innerHTML = '<tr>' + 
-                columns.map(col => {
+                tableColumns.map(col => {
                     const fieldName = fieldMetadata[col]?.name || col;
                     return `<th>${fieldName}</th>`;
                 }).join('') + 
@@ -684,11 +1022,11 @@
 
             // Build body
             const tbody = document.getElementById('tableBody');
-            tbody.innerHTML = issues.map(issue => {
+            tbody.innerHTML = pageIssues.map(issue => {
                 const fields = issue.fields || {};
                 
                 return '<tr>' + 
-                    columns.map(col => {
+                    tableColumns.map(col => {
                         // Get the actual field value (handle special fields like 'key' at issue level)
                         let value;
                         if (col === 'key') {
@@ -720,25 +1058,63 @@
                             
                             display += '</div>';
                         } else if (value !== null && value !== undefined) {
-                            // Check if there's an AI summary available (for exec-friendly fields)
-                            const summary = fields[`${col}_summary`];
-                            if (summary) {
-                                display = `<div class="exec-summary">
-                                    <div class="summary-text">${summary}</div>
-                                    <div class="summary-original" style="font-size: 0.85em; color: #999; margin-top: 4px;">
-                                        <details><summary>View full text</summary>${fields[`${col}_original`] || value}</details>
-                                    </div>
-                                </div>`;
-                            } else if (typeof value === 'object') {
-                                // Handle object values (like assignee, status, fixVersions)
-                                if (Array.isArray(value)) {
-                                    // Handle arrays (like fixVersions)
-                                    display = value.map(v => v.name || v.displayName || v.value || String(v)).join(', ');
+                            // Check if this is the Risk Indicator field (customfield_23560)
+                            if (col === 'customfield_23560') {
+                                // Extract value from object if needed (JIRA custom fields can be objects)
+                                let riskText = '';
+                                if (typeof value === 'object') {
+                                    // Handle object values (e.g., {"value": "red"} or {"name": "red"})
+                                    riskText = value.value || value.name || value.displayName || JSON.stringify(value);
                                 } else {
-                                    display = value.displayName || value.name || value.value || JSON.stringify(value);
+                                    riskText = String(value);
+                                }
+                                
+                                const riskValue = riskText.toLowerCase().trim();
+                                let riskClass = '';
+                                
+                                if (riskValue === 'red' || riskValue.includes('red')) {
+                                    riskClass = 'red';
+                                } else if (riskValue === 'yellow' || riskValue.includes('yellow')) {
+                                    riskClass = 'yellow';
+                                } else if (riskValue === 'green' || riskValue.includes('green')) {
+                                    riskClass = 'green';
+                                }
+                                
+                                if (riskClass) {
+                                    display = `<span class="risk-indicator ${riskClass}">${riskText}</span>`;
+                                } else {
+                                    display = riskText;
                                 }
                             } else {
-                                display = String(value);
+                                // Check if this field should show AI summary
+                                const showAiSummary = fields[`${col}_show_ai_summary`] !== false; // Default to true
+                                const summary = fields[`${col}_summary`];
+                                const original = fields[`${col}_original`];
+                                
+                                // Debug logging (remove in production)
+                                if (col === 'customfield_23073') {
+                                    console.log(`Status Update field - value:`, value, `summary:`, summary, `showAiSummary:`, showAiSummary, `fields:`, Object.keys(fields).filter(k => k.includes('23073')));
+                                }
+                                
+                                if (summary && summary.trim() && showAiSummary) {
+                                    // Show AI summary with expandable full text
+                                    display = `<div class="exec-summary">
+                                        <div class="summary-text">${summary}</div>
+                                        <div class="summary-original" style="font-size: 0.85em; color: #999; margin-top: 4px;">
+                                            <details><summary>View full text</summary>${original || value}</details>
+                                        </div>
+                                    </div>`;
+                                } else if (typeof value === 'object') {
+                                    // Handle object values (like assignee, status, fixVersions)
+                                    if (Array.isArray(value)) {
+                                        // Handle arrays (like fixVersions)
+                                        display = value.map(v => v.name || v.displayName || v.value || String(v)).join(', ');
+                                    } else {
+                                        display = value.displayName || value.name || value.value || JSON.stringify(value);
+                                    }
+                                } else {
+                                    display = String(value);
+                                }
                             }
                         }
 
@@ -746,6 +1122,60 @@
                     }).join('') + 
                 '</tr>';
             }).join('');
+
+            // Update pagination info
+            document.getElementById('paginationInfo').textContent = 
+                `Showing ${startIndex + 1}-${endIndex} of ${issues.length} issues`;
+
+            // Build pagination controls
+            const paginationControls = document.getElementById('paginationControls');
+            let paginationHTML = '';
+            
+            // Previous button
+            paginationHTML += `<button class="btn" ${currentPage === 1 ? 'disabled' : ''} onclick="changePage(${currentPage - 1})" style="padding: 5px 10px; font-size: 0.9em;">Previous</button>`;
+            
+            // Page numbers
+            const maxPagesToShow = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+            let endPage = Math.min(totalPagesCount, startPage + maxPagesToShow - 1);
+            if (endPage - startPage < maxPagesToShow - 1) {
+                startPage = Math.max(1, endPage - maxPagesToShow + 1);
+            }
+            
+            if (startPage > 1) {
+                paginationHTML += `<button class="btn" onclick="changePage(1)" style="padding: 5px 10px; font-size: 0.9em;">1</button>`;
+                if (startPage > 2) {
+                    paginationHTML += `<span style="padding: 5px;">...</span>`;
+                }
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                paginationHTML += `<button class="btn ${i === currentPage ? 'btn-primary' : ''}" onclick="changePage(${i})" style="padding: 5px 10px; font-size: 0.9em;">${i}</button>`;
+            }
+            
+            if (endPage < totalPagesCount) {
+                if (endPage < totalPagesCount - 1) {
+                    paginationHTML += `<span style="padding: 5px;">...</span>`;
+                }
+                paginationHTML += `<button class="btn" onclick="changePage(${totalPagesCount})" style="padding: 5px 10px; font-size: 0.9em;">${totalPagesCount}</button>`;
+            }
+            
+            // Next button
+            paginationHTML += `<button class="btn" ${currentPage === totalPagesCount ? 'disabled' : ''} onclick="changePage(${currentPage + 1})" style="padding: 5px 10px; font-size: 0.9em;">Next</button>`;
+            
+            paginationControls.innerHTML = paginationHTML;
+        }
+
+        function changePage(page) {
+            const totalPages = Math.ceil(allIssues.length / pageSize);
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            // Get field metadata - we need to store it globally
+            if (allIssues.length > 0) {
+                renderTablePage(allIssues, window.fieldMetadata || {});
+            }
+            // Scroll to top of table
+            document.querySelector('.table-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function clearResults() {
@@ -772,7 +1202,22 @@
             }
         }
 
+        // Handle page size change
+        document.addEventListener('DOMContentLoaded', function() {
+            const pageSizeSelect = document.getElementById('pageSize');
+            if (pageSizeSelect) {
+                pageSizeSelect.addEventListener('change', function() {
+                    pageSize = parseInt(this.value);
+                    currentPage = 1;
+                    if (allIssues.length > 0) {
+                        renderTablePage(allIssues, window.fieldMetadata || {});
+                    }
+                });
+            }
+        });
+
         // Initialize
+        setupJQLAutocomplete();
         // Check connection immediately and then periodically
         checkConnection();
         // Check every 10 seconds for more responsive status

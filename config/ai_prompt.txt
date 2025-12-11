@@ -1,0 +1,1 @@
+“Create a one-glance, C-suite project snapshot. Use as few lines as possible. Distill complex information into crisp, high-signal statements. No explanations, no narrative—only what an executive must know immediately: current status, blockers, ownership, timelines, asks.”

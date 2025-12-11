@@ -14,11 +14,19 @@ pip install -r requirements.txt
 touch .env
 ```
 
-3. Add your JIRA credentials to `.env`:
+3. Add your JIRA credentials and AI API key to `.env`:
 ```
 JIRA_URL=https://your-domain.atlassian.net
 JIRA_PAT_TOKEN=your_personal_access_token_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here  # Optional: for Claude API
+# OR
+OPENAI_API_KEY=your_openai_api_key_here  # Optional: for OpenAI API fallback
 ```
+
+**Note:** AI API keys are optional but recommended for intelligent summarization:
+- `ANTHROPIC_API_KEY`: Get from https://console.anthropic.com/ (preferred)
+- `OPENAI_API_KEY`: Get from https://platform.openai.com/ (fallback option)
+- If neither is provided, the app will fall back to rule-based summarization.
 
 **Note**: The `.env` file is already in `.gitignore` and will not be committed to git.
 

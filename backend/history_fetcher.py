@@ -207,11 +207,55 @@ class HistoryFetcher:
                     formatted_history = []
                     raw_history = []
                     
+                    # Normalize current value for comparison
+                    from backend.date_display import normalize_date_for_comparison
+                    current_normalized = normalize_date_for_comparison(str(current_value))
+                    
+                    seen_dates = set()  # Track seen dates to avoid duplicates
+                    current_value_str = str(current_value).strip()
+                    
                     for date_val, timestamp in date_history:
-                        # Only include dates that are different from current
-                        if date_val != current_value:
-                            formatted_history.append(format_date(date_val, self._date_format))
-                            raw_history.append(date_val)
+                        # Normalize both dates for accurate comparison
+                        date_normalized = normalize_date_for_comparison(date_val)
+                        date_val_str = str(date_val).strip()
+                        
+                        # Skip if this date matches the current date (multiple comparison methods)
+                        should_skip = False
+                        
+                        # Method 1: Normalized comparison (most reliable)
+                        if date_normalized and current_normalized:
+                            if date_normalized == current_normalized:
+                                should_skip = True
+                        
+                        # Method 2: String comparison (fallback)
+                        if not should_skip:
+                            if date_val_str == current_value_str:
+                                should_skip = True
+                        
+                        # Method 3: Compare formatted dates (additional check)
+                        if not should_skip:
+                            try:
+                                formatted_date = format_date(date_val, self._date_format)
+                                formatted_current = format_date(current_value_str, self._date_format)
+                                if formatted_date == formatted_current:
+                                    should_skip = True
+                            except:
+                                pass  # If formatting fails, continue with other checks
+                        
+                        if should_skip:
+                            continue  # Skip current date
+                        
+                        # Skip duplicates
+                        if date_normalized in seen_dates:
+                            continue
+                        seen_dates.add(date_normalized or date_val_str)
+                        
+                        formatted_history.append(format_date(date_val, self._date_format))
+                        raw_history.append(date_val)
+                    
+                    # Reverse chronological order (newest first, oldest last)
+                    formatted_history.reverse()
+                    raw_history.reverse()
                     
                     field_result["history"] = formatted_history
                     field_result["history_raw"] = raw_history

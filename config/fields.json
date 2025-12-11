@@ -7,10 +7,28 @@
       "display_name": "Code Complete Date"
     },
     {
+      "id": "customfield_11068",
+      "type": "date",
+      "track_history": true,
+      "display_name": "Test plan date"
+    },
+    {
       "id": "customfield_35863",
       "type": "date",
       "track_history": true,
-      "display_name": "Commit Gate Ready Estimation Date"
+      "display_name": "Commit Gate"
+    },
+    {
+      "id": "customfield_35864",
+      "type": "date",
+      "track_history": true,
+      "display_name": "Promotion Gate"
+    },
+    {
+      "id": "customfield_13861",
+      "type": "date",
+      "track_history": true,
+      "display_name": "FS/DS done date"
     },
     {
       "id": "customfield_23560",
@@ -25,8 +43,8 @@
       "track_history": false,
       "display_name": "Status Update",
       "ai_summarize": true,
-      "exec_friendly": true,
-      "note": "Replace customfield_STATUS_UPDATE with actual field ID from JIRA. This field will be AI-summarized for executive-friendly format."
+      "show_ai_summary": true,
+      "note": "Replace customfield_STATUS_UPDATE with actual field ID from JIRA. This field will be AI-summarized using the prompt from config/ai_prompt.txt. Set show_ai_summary to false to show original text instead of summary."
     }
   ],
   "display_columns": [
@@ -36,11 +54,14 @@
     "assignee",
     "resolution",
     "fixVersions",
+    "customfield_13861",
+    "customfield_11068",
     "customfield_11067",
     "customfield_35863",
+    "customfield_35864",
     "customfield_23560",
     "customfield_23073"
   ],
-  "date_format": "mm/dd/yyyy"
+  "date_format": "dd/mmm/yyyy"
 }
 

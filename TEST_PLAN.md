@@ -262,34 +262,78 @@ This document outlines the comprehensive test plan for the JIRA Date Tracking & 
 
 #### Test Cases:
 - ✅ **TC-3.2.1**: Table rendering with data
-  - Input: Query results
-  - Expected: Table displays all columns correctly
-  - Test: Frontend
+  - Input: Query results from backend API
+  - Expected: Table displays only configured columns from `display_columns`
+  - Test: Frontend + Unit (test_frontend_rendering.py)
+  - **Validation**: Only columns in `config/fields.json` display_columns are shown
 
-- ✅ **TC-3.2.2**: Column sorting
-  - Input: Click column header
-  - Expected: Data sorted correctly
-  - Test: Frontend
+- ✅ **TC-3.2.2**: Date field rendering
+  - Input: Date field with history and week slip
+  - Expected: 
+    - Current date displayed in bold (dd/mmm/yyyy format)
+    - Historical dates displayed struck-out in reverse chronological order (newest first)
+    - Week slip displayed with color coding (red/green/gray)
+  - Test: Frontend + Unit (test_frontend_rendering.py)
+  - **Critical**: Current date must NOT appear in struck-out history
 
-- ✅ **TC-3.2.3**: Column filtering
-  - Input: Filter input
-  - Expected: Table filtered correctly
-  - Test: Frontend
+- ✅ **TC-3.2.3**: Date format validation
+  - Input: Date values from JIRA API
+  - Expected: All dates displayed as dd/mmm/yyyy (e.g., 15/Jan/2026)
+  - Test: Unit (test_frontend_rendering.py)
+  - **Validation**: format_date() returns dd/mmm/yyyy format
 
-- ✅ **TC-3.2.4**: Pagination
-  - Input: Large dataset (1000+ issues)
-  - Expected: Pagination works correctly
-  - Test: Frontend + Integration
+- ✅ **TC-3.2.4**: Risk Indicator color highlighting
+  - Input: Risk Indicator field value (object or string)
+  - Expected: 
+    - Value extracted correctly from object (value.name.value.displayName)
+    - Color badge applied (red/yellow/green) based on value
+    - Case-insensitive matching
+  - Test: Frontend + Unit (test_frontend_rendering.py)
+  - **Validation**: Object values properly extracted, colors correctly applied
 
-- ✅ **TC-3.2.5**: Empty table state
-  - Input: No results
+- ✅ **TC-3.2.5**: AI Summary display
+  - Input: Status Update field with AI summary
+  - Expected:
+    - AI summary displayed when `show_ai_summary` is true
+    - Original text available in expandable "View full text"
+    - Falls back to original if no summary available
+  - Test: Frontend + Unit (test_frontend_rendering.py)
+
+- ✅ **TC-3.2.6**: FixVersions array rendering
+  - Input: fixVersions array from JIRA
+  - Expected: Comma-separated list of version names
+  - Test: Frontend + Unit (test_frontend_rendering.py)
+
+- ✅ **TC-3.2.7**: Pagination
+  - Input: Large dataset (100+ issues)
+  - Expected: 
+    - Correct page size selection (10, 25, 50, 100, 200)
+    - Correct page navigation (Previous/Next)
+    - Correct page number display
+    - Correct "Showing X-Y of Z issues" message
+  - Test: Frontend + Unit (test_frontend_rendering.py)
+
+- ✅ **TC-3.2.8**: Empty table state
+  - Input: No results from query
   - Expected: Appropriate empty state message
   - Test: Frontend
 
+- ✅ **TC-3.2.9**: Object field value extraction
+  - Input: Fields with object values (assignee, status, etc.)
+  - Expected: displayName or name extracted correctly
+  - Test: Frontend + Unit (test_frontend_rendering.py)
+
+- ✅ **TC-3.2.10**: Date history reverse chronological order
+  - Input: Date history array
+  - Expected: History displayed newest first, oldest last
+  - Test: Unit (test_frontend_rendering.py)
+  - **Validation**: History array is reversed before display
+
 #### Test Plan Updates:
 - Document table features
-- List sorting/filtering options
+- List all rendering validations
 - Update when table features added
+- **Frontend Rendering Tests**: See `tests/test_frontend_rendering.py`
 
 ---
 

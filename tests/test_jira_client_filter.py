@@ -65,19 +65,33 @@ class TestJiraClientFilterHandling:
         'JIRA_URL': 'https://test.atlassian.net',
         'JIRA_PAT_TOKEN': 'test_token'
     })
-    def test_filter_id_invalid_format(self):
+    def test_filter_name_without_quotes(self):
         """
-        Test that invalid filter ID format returns error.
+        Test that named filter without quotes is handled correctly.
         
         Note: Uses @patch.dict to mock environment variables instead of .env file.
         """
         client = JiraClient()
         
-        result = client.execute_jql("filter=abc123")
+        # Mock successful response
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {'content-type': 'application/json'}
+        mock_response.json.return_value = {
+            'issues': [],
+            'total': 0,
+            'startAt': 0,
+            'maxResults': 100
+        }
         
-        assert result["success"] is False
-        assert "Invalid filter ID format" in result["error"]
-        assert "numeric" in result["error"]
+        with patch.object(client, '_make_request_with_retry', return_value=mock_response):
+            result = client.execute_jql("filter=NDB-All-Base-Filter")
+            
+            # Should convert to quoted filter name
+            call_args = client._make_request_with_retry.call_args
+            params = call_args[1].get('params', {})
+            assert 'filter = "NDB-All-Base-Filter"' in params.get('jql', '')
+            assert result["success"] is True
 
     @patch.dict('os.environ', {
         'JIRA_URL': 'https://test.atlassian.net',
@@ -135,6 +149,104 @@ class TestJiraClientFilterHandling:
             call_args = client._make_request_with_retry.call_args
             params = call_args[1].get('params', {})
             assert "filter = 165194" in params.get('jql', '')
+
+    @patch.dict('os.environ', {
+        'JIRA_URL': 'https://test.atlassian.net',
+        'JIRA_PAT_TOKEN': 'test_token'
+    })
+    def test_filter_name_with_quotes(self):
+        """
+        Test that named filter with quotes is handled correctly.
+        
+        Note: Uses @patch.dict to mock environment variables instead of .env file.
+        """
+        client = JiraClient()
+        
+        # Mock successful response
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {'content-type': 'application/json'}
+        mock_response.json.return_value = {
+            'issues': [],
+            'total': 0,
+            'startAt': 0,
+            'maxResults': 100
+        }
+        
+        with patch.object(client, '_make_request_with_retry', return_value=mock_response):
+            result = client.execute_jql('filter="NDB All Base Filter"')
+            
+            # Should preserve quotes
+            call_args = client._make_request_with_retry.call_args
+            params = call_args[1].get('params', {})
+            assert 'filter = "NDB All Base Filter"' in params.get('jql', '')
+            assert result["success"] is True
+
+    @patch.dict('os.environ', {
+        'JIRA_URL': 'https://test.atlassian.net',
+        'JIRA_PAT_TOKEN': 'test_token'
+    })
+    def test_filter_with_spaces_around_equals(self):
+        """
+        Test that filter = 12345 (with spaces) is handled correctly.
+        
+        Note: Uses @patch.dict to mock environment variables instead of .env file.
+        """
+        client = JiraClient()
+        
+        # Mock successful response
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {'content-type': 'application/json'}
+        mock_response.json.return_value = {
+            'issues': [],
+            'total': 0,
+            'startAt': 0,
+            'maxResults': 100
+        }
+        
+        with patch.object(client, '_make_request_with_retry', return_value=mock_response):
+            result = client.execute_jql("filter = 165194")
+            
+            # Should handle spaces around =
+            call_args = client._make_request_with_retry.call_args
+            params = call_args[1].get('params', {})
+            assert "filter = 165194" in params.get('jql', '')
+            assert result["success"] is True
+
+    @patch.dict('os.environ', {
+        'JIRA_URL': 'https://test.atlassian.net',
+        'JIRA_PAT_TOKEN': 'test_token'
+    })
+    def test_filter_with_additional_jql(self):
+        """
+        Test that filter with additional JQL clauses is handled correctly.
+        
+        Note: Uses @patch.dict to mock environment variables instead of .env file.
+        """
+        client = JiraClient()
+        
+        # Mock successful response
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {'content-type': 'application/json'}
+        mock_response.json.return_value = {
+            'issues': [],
+            'total': 0,
+            'startAt': 0,
+            'maxResults': 100
+        }
+        
+        with patch.object(client, '_make_request_with_retry', return_value=mock_response):
+            result = client.execute_jql('filter=NDB-All-Base-Filter and type in (Feature, Initiative)')
+            
+            # Should preserve additional JQL
+            call_args = client._make_request_with_retry.call_args
+            params = call_args[1].get('params', {})
+            jql = params.get('jql', '')
+            assert 'filter = "NDB-All-Base-Filter"' in jql
+            assert 'AND type in (Feature, Initiative)' in jql
+            assert result["success"] is True
 
     @patch.dict('os.environ', {
         'JIRA_URL': 'https://test.atlassian.net',

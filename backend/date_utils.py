@@ -13,22 +13,28 @@ from typing import Dict, List, Optional, Tuple
 logger = logging.getLogger(__name__)
 
 
-def format_date(date_str: str, target_format: str = "mm/dd/yyyy") -> str:
+def format_date(date_str: str, target_format: str = "dd/mmm/yyyy") -> str:
     """
     Format a date string to the target format.
     
     Accepts JIRA-friendly formats (ISO 8601) internally and converts to display format.
-    Display format is always mm/dd/yyyy regardless of config.
+    Display format is always dd/mmm/yyyy (e.g., 15/Jan/2026) regardless of config.
     
     Args:
         date_str: Date string in JIRA-friendly formats (ISO 8601, etc.)
-        target_format: Target format (ignored - always uses mm/dd/yyyy for display)
+        target_format: Target format (ignored - always uses dd/mmm/yyyy for display)
         
     Returns:
-        str: Formatted date string in mm/dd/yyyy format
+        str: Formatted date string in dd/mmm/yyyy format (e.g., 15/Jan/2026)
     """
     if not date_str:
         return ""
+    
+    # Month abbreviations mapping
+    month_abbr = {
+        1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun",
+        7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"
+    }
     
     # Try to parse common date formats
     date_formats = [
@@ -52,14 +58,18 @@ def format_date(date_str: str, target_format: str = "mm/dd/yyyy") -> str:
         logger.warning(f"Could not parse date: {date_str}")
         return date_str  # Return original if parsing fails
     
-    # Always format to mm/dd/yyyy for display (regardless of target_format parameter)
-    # Internal processing uses JIRA-friendly formats, but display is always mm/dd/yyyy
-    return parsed_date.strftime("%m/%d/%Y")
+    # Format to dd/mmm/yyyy (e.g., 15/Jan/2026)
+    day = parsed_date.day
+    month = month_abbr[parsed_date.month]
+    year = parsed_date.year
+    return f"{day:02d}/{month}/{year}"
 
 
 def calculate_week_slip(original_date: str, current_date: str) -> Tuple[int, str]:
     """
     Calculate the calendar week slip between two dates.
+    
+    Uses the new date_display module for consistent formatting.
     
     Args:
         original_date: Original date (first in history) as string
@@ -67,37 +77,30 @@ def calculate_week_slip(original_date: str, current_date: str) -> Tuple[int, str
         
     Returns:
         Tuple[int, str]: (weeks, formatted_string)
-            - weeks: Number of weeks (positive = delay, negative = ahead)
-            - formatted_string: Human-readable string (e.g., "+3 weeks", "-1 week")
+            - weeks: Number of weeks (positive = delay, negative = ahead) - rounded for backward compatibility
+            - formatted_string: Human-readable string (e.g., "+3 days", "+1.5 weeks", "-1 week")
     """
+    from backend.date_display import calculate_date_difference_display
+    
     if not original_date or not current_date:
         return 0, "N/A"
     
     try:
-        # Parse dates
+        # Use the new date display module
+        display_str, unit_type = calculate_date_difference_display(original_date, current_date)
+        
+        # For backward compatibility, calculate weeks as integer
         orig = parse_date(original_date)
         curr = parse_date(current_date)
         
         if not orig or not curr:
-            return 0, "N/A"
+            return 0, display_str
         
-        # Calculate difference
         delta = curr - orig
         days = delta.days
+        weeks = round(days / 7)  # Integer weeks for backward compatibility
         
-        # Convert to calendar weeks (round to nearest week)
-        # A week is 7 days, so we divide by 7 and round
-        weeks = round(days / 7)
-        
-        # Format string
-        if weeks > 0:
-            week_str = f"+{weeks} week{'s' if weeks != 1 else ''}"
-        elif weeks < 0:
-            week_str = f"{weeks} week{'s' if abs(weeks) != 1 else ''}"
-        else:
-            week_str = "0 weeks"
-        
-        return weeks, week_str
+        return weeks, display_str
         
     except Exception as e:
         logger.error(f"Error calculating week slip: {str(e)}")
