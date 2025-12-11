@@ -45,6 +45,12 @@ This document outlines the comprehensive test plan for the JIRA Date Tracking & 
   - Expected: Properly escaped and executed
   - Test: Integration
 
+- ✅ **TC-1.1.6**: Non-JSON response from JIRA
+  - Input: JIRA returns HTML error page instead of JSON
+  - Expected: Graceful error handling, no JSON parsing crash, clear error message
+  - Test: Integration
+  - **Critical**: Must check content-type before parsing JSON
+
 #### Test Plan Updates:
 - Document all JQL query formats supported
 - List edge cases and error scenarios
@@ -341,10 +347,11 @@ This document outlines the comprehensive test plan for the JIRA Date Tracking & 
   - Expected: Timeout error with retry
   - Test: Integration
 
-- ✅ **TC-4.2.6**: Invalid JSON response
-  - Input: HTML error page
-  - Expected: Clear error message
+- ✅ **TC-4.2.6**: Invalid JSON response (non-JSON content)
+  - Input: HTML error page or non-JSON response from JIRA
+  - Expected: Clear error message with response preview, no JSON parsing crash
   - Test: Integration
+  - **Critical**: Must check content-type before parsing JSON
 
 - ✅ **TC-4.2.7**: Error message display
   - Input: Various error types

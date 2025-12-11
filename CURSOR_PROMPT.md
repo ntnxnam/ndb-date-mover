@@ -50,6 +50,9 @@ Build a web application that helps Engineering Program Managers track JIRA proje
    - Provide actionable guidance (what to do to fix)
    - Show error context (which operation failed)
    - Use visual indicators (icons, colors)
+   - **Critical**: Always check `Content-Type` header before parsing JSON responses
+   - Handle non-JSON responses gracefully (HTML error pages, plain text, etc.)
+   - Never crash on JSON parsing errors - provide helpful error messages instead
 
 ### UI Requirements
 
@@ -168,6 +171,7 @@ Build a web application that helps Engineering Program Managers track JIRA proje
    - Field metadata fetching and caching
    - Date history parsing from changelog
    - Error handling and retry logic
+   - **JSON parsing error handling** (non-JSON responses from JIRA)
 
 2. **Integration Tests**
    - JIRA API connection and authentication
@@ -183,6 +187,7 @@ Build a web application that helps Engineering Program Managers track JIRA proje
    - `GET /api/issue/{id}/history` - Test changelog retrieval
    - Error handling for all endpoints
    - Authentication and authorization
+   - **Non-JSON response handling** (HTML error pages, plain text responses)
 
 4. **Frontend Tests**
    - JQL input validation
