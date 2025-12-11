@@ -476,7 +476,12 @@ class JiraClient:
                     all_fields = response.json()
                 except ValueError as e:
                     logger.error(f"Failed to parse JSON response from JIRA field metadata: {str(e)}")
-                    logger.debug(f"Response text: {response.text[:500]}")
+                    try:
+                        response_text = getattr(response, 'text', '')
+                        if response_text:
+                            logger.debug(f"Response text: {response_text[:500]}")
+                    except Exception:
+                        pass
                     logger.debug(f"Content-Type: {content_type}")
                     return {}
                 
