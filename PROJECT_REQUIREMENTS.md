@@ -333,7 +333,21 @@ A web application for tracking and visualizing JIRA project date movements. The 
 - ✅ Connection status indicator
 - ✅ Comprehensive test suite (60+ tests)
 
-### Known Issues and Solutions
+### Recent Bug Fixes
+
+### Bug Fix 1: Content-Type Header Logic (backend/app.py)
+- **Issue**: Contradictory logic in `after_request` function
+- **Fix**: Removed redundant conditional block, single correct logic
+- **Status**: ✅ Fixed
+- **Commit**: cb028bb
+
+### Bug Fix 2: Pytest Coverage Configuration (pytest.ini)
+- **Issue**: Coverage paths pointed to wrong modules
+- **Fix**: Updated to `backend.jira_client` and `backend.app`
+- **Status**: ✅ Fixed
+- **Commit**: 3873a1f
+
+## Known Issues and Solutions
 1. **JSON Parsing Errors**: Fixed with content-type checking before parsing
 2. **Filter ID HTML Responses**: Fixed with HTML detection and specific error messages
 3. **Test Environment Variables**: Documented - using `@patch.dict` is correct pattern

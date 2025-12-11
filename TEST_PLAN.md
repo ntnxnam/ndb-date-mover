@@ -383,6 +383,22 @@ This document outlines the comprehensive test plan for the JIRA Date Tracking & 
 
 ## Known Issues and Fixes
 
+### Fixed Issues (2024)
+
+**Bug Fix 1: Content-Type Header Logic (backend/app.py)**
+- **Issue**: Contradictory logic in `after_request` function - conditional set followed by unconditional overwrite
+- **Fix**: Removed redundant block, single conditional that only sets Content-Type if not already present
+- **Status**: ✅ Fixed (commit cb028bb)
+- **Impact**: Properly respects existing Content-Type headers
+
+**Bug Fix 2: Pytest Coverage Configuration (pytest.ini)**
+- **Issue**: Coverage paths pointed to root-level modules (`jira_client`, `app`) instead of `backend.jira_client`, `backend.app`
+- **Fix**: Updated to `--cov=backend.jira_client` and `--cov=backend.app`
+- **Status**: ✅ Fixed (commit 3873a1f)
+- **Impact**: Coverage reports now correctly measure backend modules
+
+## Previous Known Issues and Fixes
+
 ### Issue: JSON Parsing Errors
 **Problem**: JIRA API sometimes returns non-JSON responses (HTML error pages, plain text, etc.) which caused "Expecting value: line 8 column 1 (char 7)" errors when parsed as JSON.
 
