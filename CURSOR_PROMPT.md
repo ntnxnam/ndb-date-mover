@@ -81,6 +81,7 @@ Build a web application that helps Engineering Program Managers track JIRA proje
 - ✅ Extended JIRA client (`backend/jira_client.py`) with new methods
 - ✅ Created configuration loader (`backend/config_loader.py`)
 - ✅ Created date utilities (`backend/date_utils.py`)
+- ✅ Created shared utilities (`backend/utils.py`) - Error handling helpers
 - ✅ Endpoints implemented:
   - `POST /api/query` - Execute JQL with date enrichment
   - `GET /api/fields` - Get field metadata
@@ -256,4 +257,6 @@ Build a web application that helps Engineering Program Managers track JIRA proje
 - **Update test plans in documentation for each feature**
 - **Ensure all tests pass before committing code**
 - **Test Environment Variables**: Always use `@patch.dict('os.environ', ...)` in unit tests, never load from `.env` files
+- **Code Quality**: Follow DRY principle, extract shared utilities, remove redundant code
+- **Lightweight**: Keep code minimal, avoid bloat, remove unused files
 

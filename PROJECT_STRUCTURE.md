@@ -8,6 +8,7 @@ ndb-date-mover/
 │   ├── 📄 jira_client.py        # JIRA connection module with self-healing
 │   ├── 📄 config_loader.py      # Configuration file loader and validator
 │   ├── 📄 date_utils.py         # Date formatting and week slip calculations
+│   ├── 📄 utils.py              # Shared utility functions (error handling)
 │   └── 📄 __init__.py           # Backend package init
 │
 ├── 📁 frontend/                   # Frontend Web Server
@@ -64,6 +65,9 @@ ndb-date-mover/
   - Loads and validates `config/fields.json`
 - **`backend/date_utils.py`**: Date formatting and week slip calculation utilities
   - Functions: `format_date()`, `calculate_week_slip()`, `extract_date_history()`
+- **`backend/utils.py`**: Shared utility functions for error handling
+  - `safe_get_response_text()` - Unified response text extraction
+  - `check_html_response()` - HTML response detection
 
 ### Frontend Files
 - **`frontend/app.html`**: Main application UI with sidebar navigation, JQL query builder, table display

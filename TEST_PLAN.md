@@ -460,6 +460,12 @@ Please verify your credentials and JIRA URL in the .env file.
 - Various JQL query formats
 - Date history test data
 
+### Code Quality Standards:
+- **DRY Principle**: Extract shared utilities to avoid duplication
+- **Lightweight**: Remove unused files and redundant code
+- **Maintainability**: Use shared utility functions for common patterns
+- **Best Practices**: Regular code cleanup and refactoring
+
 ### Environment Variable Handling in Tests:
 **Important**: Unit tests use `@patch.dict('os.environ', ...)` to mock environment variables instead of loading from `.env` files.
 
