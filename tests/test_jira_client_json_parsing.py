@@ -46,8 +46,9 @@ class TestJiraClientJSONParsing:
             result = client.execute_jql("project = TEST")
             
             assert result["success"] is False
-            assert "invalid response format" in result["error"].lower()
-            assert "JIRA URL" in result["error"] or "connection" in result["error"]
+            # HTML response detection now returns a more specific message
+            assert "html" in result["error"].lower() or "invalid response format" in result["error"].lower()
+            assert "JIRA URL" in result["error"] or "connection" in result["error"] or "authentication" in result["error"].lower()
             assert result["issues"] == []
             assert result["total"] == 0
 
