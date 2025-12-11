@@ -50,12 +50,32 @@ start_servers() {
     ./start_all.sh
 }
 
+# Function to start with tests
+start_with_tests() {
+    echo -e "${BLUE}🧪 Starting with tests and self-healing...${NC}"
+    echo ""
+    ./start_with_tests.sh
+}
+
 # Function to restart servers
 restart_servers() {
     echo -e "${BLUE}🔄 Restarting servers...${NC}"
     echo ""
+    
+    # Step 1: Run tests
+    echo -e "${YELLOW}Step 1: Running tests...${NC}"
+    if ./run_tests.sh; then
+        echo -e "${GREEN}✅ Tests passed!${NC}"
+    else
+        echo -e "${YELLOW}⚠️  Tests failed, but continuing with restart...${NC}"
+        echo ""
+    fi
+    
+    # Step 2: Stop servers
     stop_servers
     sleep 2
+    
+    # Step 3: Start servers
     start_servers
 }
 
@@ -73,6 +93,9 @@ case "${1:-}" in
     status)
         check_status
         ;;
+    test)
+        start_with_tests
+        ;;
     *)
         echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo -e "${BLUE}  JIRA Connection App - Control Script${NC}"
@@ -81,13 +104,15 @@ case "${1:-}" in
         echo "Usage: ./uber.sh [command]"
         echo ""
         echo "Commands:"
-        echo -e "  ${GREEN}start${NC}    - Start backend and frontend servers"
-        echo -e "  ${RED}stop${NC}     - Stop all running servers"
-        echo -e "  ${BLUE}restart${NC}  - Stop and start servers (recommended)"
-        echo -e "  ${YELLOW}status${NC}   - Check server status"
+        echo -e "  ${GREEN}start${NC}       - Start backend and frontend servers"
+        echo -e "  ${RED}stop${NC}        - Stop all running servers"
+        echo -e "  ${BLUE}restart${NC}     - Stop and start servers (recommended)"
+        echo -e "  ${BLUE}test${NC}        - Run tests and start servers with self-healing"
+        echo -e "  ${YELLOW}status${NC}      - Check server status"
         echo ""
         check_status
         echo "Examples:"
+        echo "  ./uber.sh test       # Run tests and start (recommended)"
         echo "  ./uber.sh restart    # Kill and restart everything"
         echo "  ./uber.sh stop       # Stop all servers"
         echo "  ./uber.sh start      # Start servers"

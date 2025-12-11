@@ -1,23 +1,18 @@
 #!/bin/bash
-# Uber Script: Kill and Restart Backend and Frontend Servers
-# Automatically runs tests before restarting
+# Start Application with Tests and Self-Healing
 
-echo "🔄 Restarting JIRA Connection Application..."
+echo "🚀 Starting JIRA Connection Application with Tests..."
 echo ""
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR"
+cd "$(dirname "$0")"
 
 # Step 1: Run tests
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Step 1: Running tests..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-if ./run_tests.sh; then
+if ! ./run_tests.sh; then
     echo ""
-    echo "✅ Tests passed! Proceeding with restart..."
-else
-    echo ""
-    echo "⚠️  Tests failed, but continuing with restart..."
+    echo "⚠️  Tests failed, but continuing anyway..."
     echo "   Fix test issues before deploying to production."
     echo ""
     read -p "Press Enter to continue or Ctrl+C to abort..."
@@ -30,12 +25,10 @@ echo "Step 2: Stopping existing servers..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 ./kill_servers.sh
 
+# Step 3: Start servers with self-healing
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Step 3: Starting servers..."
+echo "Step 3: Starting servers with self-healing..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-# Step 3: Start servers
 ./start_all.sh
 

@@ -9,11 +9,19 @@ Author: NDB Date Mover Team
 
 import logging
 import os
+from typing import Dict, List
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from dotenv import load_dotenv
 
 from jira_client import JiraClient, create_jira_client
+from config_loader import ConfigLoader, load_config
+from date_utils import (
+    format_date,
+    calculate_week_slip,
+    extract_date_history,
+    get_week_slip_color,
+)
 
 # Load environment variables
 load_dotenv()
@@ -119,6 +127,327 @@ def test_connection():
                 {
                     "success": False,
                     "message": f"Unexpected error: {str(e)}",
+                }
+            ),
+            500,
+        )
+
+
+@app.route("/api/query", methods=["POST"])
+def execute_query():
+    """
+    Execute a JQL query against JIRA and enrich with date history and week slips.
+    
+    Request body:
+        {
+            "jql": "project = PROJ AND status = 'In Progress'",
+            "max_results": 100,
+            "start_at": 0,
+            "include_history": true
+        }
+    
+    Returns:
+        JSON response with query results enriched with date history
+    """
+    logger.info("JQL query execution requested")
+    
+    try:
+        # Get request data
+        data = request.get_json() or {}
+        jql = data.get("jql", "").strip()
+        max_results = data.get("max_results", 100)
+        start_at = data.get("start_at", 0)
+        include_history = data.get("include_history", True)
+        
+        if not jql:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "JQL query is required",
+                    }
+                ),
+                400,
+            )
+        
+        # Load configuration
+        try:
+            config_loader = ConfigLoader()
+            config = config_loader.load()
+            date_fields = config_loader.get_date_fields()
+            date_format = config_loader.get_date_format()
+        except Exception as e:
+            logger.warning(f"Could not load configuration: {str(e)}")
+            date_fields = []
+            date_format = "mm/dd/yyyy"
+        
+        # Create JIRA client
+        client = create_jira_client()
+        if client is None:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "JIRA credentials not configured",
+                    }
+                ),
+                400,
+            )
+        
+        try:
+            # Execute query
+            result = client.execute_jql(jql, max_results, start_at)
+            
+            if not result.get("success"):
+                return jsonify(result), 400
+            
+            # Get field metadata for display names
+            field_metadata = client.get_field_metadata()
+            
+            # Enrich issues with date history and week slips
+            enriched_issues = []
+            for issue in result.get("issues", []):
+                enriched_issue = enrich_issue_with_dates(
+                    issue, date_fields, field_metadata, client, include_history, date_format
+                )
+                enriched_issues.append(enriched_issue)
+            
+            result["issues"] = enriched_issues
+            result["field_metadata"] = {
+                field_id: {
+                    "name": field_data.get("name", field_id),
+                    "type": field_data.get("type", "unknown"),
+                }
+                for field_id, field_data in field_metadata.items()
+            }
+            
+            return jsonify(result), 200
+        finally:
+            client.close()
+            
+    except Exception as e:
+        logger.exception("Unexpected error during query execution")
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": f"Unexpected error: {str(e)}",
+                }
+            ),
+            500,
+        )
+
+
+def enrich_issue_with_dates(
+    issue: Dict,
+    date_fields: List[Dict],
+    field_metadata: Dict,
+    client: JiraClient,
+    include_history: bool,
+    date_format: str,
+) -> Dict:
+    """
+    Enrich an issue with date history and week slip calculations.
+    
+    Args:
+        issue: JIRA issue data
+        date_fields: List of date field configurations
+        field_metadata: Field metadata dictionary
+        client: JIRA client instance
+        include_history: Whether to fetch and include history
+        date_format: Date format string
+        
+    Returns:
+        Dict: Enriched issue data
+    """
+    issue_key = issue.get("key", "")
+    fields = issue.get("fields", {})
+    
+    # Process each date field that tracks history
+    for date_field_config in date_fields:
+        field_id = date_field_config.get("id")
+        current_value = fields.get(field_id)
+        
+        if not current_value:
+            continue
+        
+        # Format current date
+        formatted_current = format_date(str(current_value), date_format)
+        fields[f"{field_id}_formatted"] = formatted_current
+        
+        if include_history and date_field_config.get("track_history"):
+            try:
+                # Fetch changelog for this field
+                changelog = client.get_issue_changelog(issue_key, field_id)
+                date_history = extract_date_history(changelog, field_id)
+                
+                # Format historical dates
+                formatted_history = [
+                    format_date(date_val, date_format)
+                    for date_val, _ in date_history
+                    if date_val != current_value
+                ]
+                
+                fields[f"{field_id}_history"] = formatted_history
+                
+                # Calculate week slip
+                if date_history:
+                    original_date = date_history[0][0]  # First date in history
+                    weeks, week_str = calculate_week_slip(original_date, str(current_value))
+                    fields[f"{field_id}_week_slip"] = {
+                        "weeks": weeks,
+                        "display": week_str,
+                        "color": get_week_slip_color(weeks),
+                    }
+                else:
+                    fields[f"{field_id}_week_slip"] = {
+                        "weeks": 0,
+                        "display": "0 weeks",
+                        "color": "gray",
+                    }
+                    
+            except Exception as e:
+                logger.warning(
+                    f"Error enriching date history for {issue_key}/{field_id}: {str(e)}"
+                )
+                fields[f"{field_id}_history"] = []
+                fields[f"{field_id}_week_slip"] = {
+                    "weeks": 0,
+                    "display": "N/A",
+                    "color": "gray",
+                }
+    
+    issue["fields"] = fields
+    return issue
+
+
+@app.route("/api/fields", methods=["GET"])
+def get_fields():
+    """
+    Get field metadata from JIRA.
+    
+    Query parameters:
+        field_id: Optional specific field ID to fetch
+    
+    Returns:
+        JSON response with field metadata
+    """
+    logger.info("Field metadata requested")
+    
+    try:
+        field_id = request.args.get("field_id")
+        
+        # Create JIRA client
+        client = create_jira_client()
+        if client is None:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "JIRA credentials not configured",
+                    }
+                ),
+                400,
+            )
+        
+        try:
+            # Get field metadata
+            fields = client.get_field_metadata(field_id)
+            return jsonify({"success": True, "fields": fields}), 200
+        finally:
+            client.close()
+            
+    except Exception as e:
+        logger.exception("Unexpected error fetching field metadata")
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": f"Unexpected error: {str(e)}",
+                }
+            ),
+            500,
+        )
+
+
+@app.route("/api/issue/<issue_id>/history", methods=["GET"])
+def get_issue_history(issue_id: str):
+    """
+    Get changelog (change history) for an issue.
+    
+    Query parameters:
+        field_id: Optional specific field ID to filter changes
+    
+    Returns:
+        JSON response with issue change history
+    """
+    logger.info(f"Changelog requested for issue: {issue_id}")
+    
+    try:
+        field_id = request.args.get("field_id")
+        
+        # Create JIRA client
+        client = create_jira_client()
+        if client is None:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "JIRA credentials not configured",
+                    }
+                ),
+                400,
+            )
+        
+        try:
+            # Get changelog
+            changes = client.get_issue_changelog(issue_id, field_id)
+            return jsonify({"success": True, "changes": changes}), 200
+        finally:
+            client.close()
+            
+    except Exception as e:
+        logger.exception("Unexpected error fetching changelog")
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": f"Unexpected error: {str(e)}",
+                }
+            ),
+            500,
+        )
+
+
+@app.route("/api/config", methods=["GET"])
+def get_config():
+    """
+    Get the current configuration.
+    
+    Returns:
+        JSON response with configuration data
+    """
+    try:
+        loader = ConfigLoader()
+        config = loader.load()
+        return jsonify({"success": True, "config": config}), 200
+    except FileNotFoundError as e:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": str(e),
+                }
+            ),
+            404,
+        )
+    except Exception as e:
+        logger.exception("Unexpected error loading configuration")
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": f"Unexpected error: {str(e)}",
                 }
             ),
             500,

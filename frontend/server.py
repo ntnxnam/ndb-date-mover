@@ -26,6 +26,13 @@ class FrontendHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(FRONTEND_DIR), **kwargs)
 
+    def do_GET(self):
+        """Handle GET requests with routing."""
+        # Route root to app.html
+        if self.path == '/' or self.path == '/index.html':
+            self.path = '/app.html'
+        return super().do_GET()
+
     def end_headers(self):
         """Add CORS headers."""
         self.send_header("Access-Control-Allow-Origin", "*")

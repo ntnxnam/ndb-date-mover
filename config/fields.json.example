@@ -1,0 +1,27 @@
+{
+  "custom_fields": [
+    {
+      "id": "customfield_11067",
+      "type": "date",
+      "track_history": true,
+      "display_name": "Code Complete Date"
+    },
+    {
+      "id": "customfield_35863",
+      "type": "date",
+      "track_history": true,
+      "display_name": "	Commit Gate Ready Estimation Date"
+    }
+  ],
+  "display_columns": [
+    "key",
+    "summary",
+    "status",
+    "assignee",
+    "resolution",
+    "customfield_11067",
+    "customfield_35863"
+  ],
+   "date_format": "mm/dd/yyyy"
+}
+

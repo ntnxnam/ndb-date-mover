@@ -108,9 +108,26 @@ Build a web application that helps Engineering Program Managers track JIRA proje
 ### Implementation Priority
 
 1. **Phase 1**: JQL input, basic table, config loading, field names
+   - **Tests Required**: JQL validation, config loading, field metadata fetching
+   - **Test Plan**: Document test scenarios for query execution and field display
+
 2. **Phase 2**: Date history tracking, week slip calculation
+   - **Tests Required**: Changelog parsing, date history extraction, week calculation
+   - **Test Plan**: Document test cases for date tracking and slip calculation
+
 3. **Phase 3**: UI navigation, tabs, breadcrumbs, grayscale design
+   - **Tests Required**: Frontend routing, component rendering, user interactions
+   - **Test Plan**: Document UI test scenarios and user flows
+
 4. **Phase 4**: Self-healing connection, timeout handling, error display
+   - **Tests Required**: Retry logic, connection recovery, error handling
+   - **Test Plan**: Document resilience test scenarios
+
+**For Each Phase:**
+- Write tests alongside feature implementation
+- Update test plan document with new scenarios
+- Ensure test coverage meets 90% minimum
+- Run full test suite before marking phase complete
 
 ### Success Criteria
 
@@ -121,13 +138,89 @@ Build a web application that helps Engineering Program Managers track JIRA proje
 - ✅ Connection issues are handled gracefully
 - ✅ Error messages are clear and helpful
 - ✅ UI is clean, minimal, and navigable
+- ✅ **All tests pass (unit, integration, E2E)**
+- ✅ **Test coverage ≥ 90% for all new code**
+- ✅ **Test plans updated and documented**
+- ✅ **Tests run automatically on restart**
+
+### Testing Requirements
+
+**Test Coverage:**
+- Minimum 90% code coverage for all new code
+- Unit tests for all business logic functions
+- Integration tests for API endpoints
+- End-to-end tests for critical user flows
+- Test plans must be updated for each feature
+
+**Test Categories:**
+
+1. **Unit Tests**
+   - JQL query parsing and validation
+   - Date calculation functions (week slip calculation)
+   - Configuration file loading and validation
+   - Field metadata fetching and caching
+   - Date history parsing from changelog
+   - Error handling and retry logic
+
+2. **Integration Tests**
+   - JIRA API connection and authentication
+   - JQL query execution with various formats
+   - Field metadata retrieval
+   - Changelog fetching for date history
+   - Self-healing connection retry mechanisms
+   - Configuration file loading
+
+3. **API Endpoint Tests**
+   - `POST /api/query` - Test with valid/invalid JQL
+   - `GET /api/fields` - Test field metadata retrieval
+   - `GET /api/issue/{id}/history` - Test changelog retrieval
+   - Error handling for all endpoints
+   - Authentication and authorization
+
+4. **Frontend Tests**
+   - JQL input validation
+   - Table rendering with data
+   - Date formatting and strike-through display
+   - Week slip calculation display
+   - Error message display
+   - Navigation and routing
+
+5. **End-to-End Tests**
+   - Complete flow: JQL input → query execution → table display
+   - Date history tracking flow
+   - Week slip calculation flow
+   - Error handling flow
+   - Connection recovery flow
+
+**Test Plan Updates:**
+- Create/update test plan document for each feature
+- Document test scenarios and expected results
+- Include edge cases and error conditions
+- Update test plans when features change
+- Maintain test coverage reports
+
+**Test Execution:**
+- All tests must pass before code merge
+- Run tests automatically on server restart (via `./uber.sh restart`)
+- Continuous integration: tests run on every commit
+- Test reports generated with coverage metrics
+
+**Test Data:**
+- Use mock JIRA responses for unit tests
+- Use test fixtures for consistent test data
+- Mock external dependencies (JIRA API)
+- Test with various JQL query formats
+- Test with different date field configurations
 
 ### Code Guidelines
 
 - Use existing `jira_client.py` as base, extend with new methods
 - Follow existing code patterns and structure
 - Add comprehensive logging
-- Write unit tests for critical functions
+- Write unit tests for ALL functions (not just critical ones)
 - Maintain separation between backend API and frontend UI
 - Document API endpoints with examples
+- **Write tests FIRST (TDD approach) or immediately after implementation**
+- **Update test plans in documentation for each feature**
+- **Ensure all tests pass before committing code**
 

@@ -28,11 +28,14 @@ JIRA_PAT_TOKEN=your_personal_access_token_here
 
 **Option 1: Use the uber script (recommended):**
 ```bash
-./uber.sh restart    # Kill existing and restart everything
-./uber.sh start      # Start servers
+./uber.sh restart    # Run tests, then kill existing and restart everything
+./uber.sh test       # Run tests and start servers with self-healing
+./uber.sh start      # Start servers (no tests)
 ./uber.sh stop       # Stop all servers
 ./uber.sh status     # Check server status
 ```
+
+**Note:** `restart` and `test` commands automatically run tests before starting servers.
 
 **Option 2: Start everything:**
 ```bash
@@ -40,6 +43,13 @@ JIRA_PAT_TOKEN=your_personal_access_token_here
 ```
 
 Then navigate to `http://localhost:6291` in your browser.
+
+**Note:** The frontend will automatically redirect to `app.html` which contains the full JIRA Date Tracker interface with:
+- Sidebar navigation
+- JQL Query Builder
+- Date history tracking
+- Week slip calculations
+- Configuration management
 
 ### Separate Servers
 

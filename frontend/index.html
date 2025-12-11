@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JIRA Connection Tester</title>
+    <meta http-equiv="refresh" content="0; url=app.html">
+    <title>JIRA Date Tracker - Redirecting...</title>
+    <script>
+        window.location.href = 'app.html';
+    </script>
     <style>
         * {
             margin: 0;
@@ -289,7 +293,19 @@
                 } else {
                     resultContainer.classList.add('error');
                     resultTitle.textContent = '❌ Connection Failed';
-                    resultMessage.textContent = data.message || 'Failed to connect to JIRA.';
+                    
+                    // Clean up error message for display
+                    let errorMessage = data.message || 'Failed to connect to JIRA.';
+                    // Remove redundant "Connection failed:" prefix if present
+                    if (errorMessage.startsWith('Connection failed: ')) {
+                        errorMessage = errorMessage.substring('Connection failed: '.length);
+                    }
+                    // Remove redundant "Request failed:" prefix if present
+                    if (errorMessage.startsWith('Request failed: ')) {
+                        errorMessage = errorMessage.substring('Request failed: '.length);
+                    }
+                    
+                    resultMessage.textContent = errorMessage;
 
                     // Show additional error details
                     let errorDetailsHtml = '';
@@ -299,9 +315,14 @@
                     if (response && !response.ok) {
                         errorDetailsHtml += `<p><strong>Response Status:</strong> ${response.status} ${response.statusText || ''}</p>`;
                     }
-                    if (data.message && data.message.length > 100) {
-                        // If message is long, show it in details too
-                        errorDetailsHtml += `<p><strong>Full Error:</strong> ${data.message}</p>`;
+                    
+                    // Show troubleshooting tips based on error type
+                    if (errorMessage.includes('invalid response') || errorMessage.includes('JSON')) {
+                        errorDetailsHtml += `<p><strong>💡 Tip:</strong> Please verify your JIRA URL in the .env file is correct.</p>`;
+                    } else if (errorMessage.includes('Authentication failed') || errorMessage.includes('Invalid or expired token')) {
+                        errorDetailsHtml += `<p><strong>💡 Tip:</strong> Check your JIRA_PAT_TOKEN in the .env file. The token may be expired.</p>`;
+                    } else if (errorMessage.includes('Unable to reach')) {
+                        errorDetailsHtml += `<p><strong>💡 Tip:</strong> Check your network connection and JIRA URL.</p>`;
                     }
                     
                     if (errorDetailsHtml) {

@@ -1,5 +1,6 @@
 #!/bin/bash
 # Start Both Backend and Frontend Servers
+# Note: Use ./restart.sh or ./uber.sh restart to run tests first
 
 echo "🚀 Starting JIRA Connection Application..."
 echo ""

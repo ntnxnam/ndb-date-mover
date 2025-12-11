@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JIRA Date Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 250px;
+            background: #2c2c2c;
+            color: #fff;
+            padding: 20px 0;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid #444;
+            margin-bottom: 20px;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+
+        .nav-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item:hover {
+            background: #3a3a3a;
+        }
+
+        .nav-item.active {
+            background: #3a3a3a;
+            border-left-color: #666;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            background: #fff;
+            padding: 15px 30px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .breadcrumbs {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .breadcrumbs a {
+            color: #666;
+            text-decoration: none;
+        }
+
+        .breadcrumbs a:hover {
+            text-decoration: underline;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85em;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ccc;
+        }
+
+        .status-dot.connected {
+            background: #4caf50;
+        }
+
+        .status-dot.disconnected {
+            background: #f44336;
+        }
+
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            color: #666;
+            font-size: 0.95em;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: #333;
+        }
+
+        .tab.active {
+            color: #333;
+            border-bottom-color: #333;
+            font-weight: 600;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.95em;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #333;
+            color: #fff;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #222;
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Table */
+        .table-container {
+            background: #fff;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f8f8f8;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #ddd;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        th:hover {
+            background: #f0f0f0;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:hover {
+            background: #f8f8f8;
+        }
+
+        /* Date Display */
+        .date-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .date-current {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .date-history {
+            font-size: 0.85em;
+            color: #999;
+        }
+
+        .date-history span {
+            text-decoration: line-through;
+            margin-right: 8px;
+        }
+
+        .week-slip {
+            font-weight: 700;
+            font-size: 1.1em;
+            padding: 4px 8px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .week-slip.red {
+            color: #d32f2f;
+            background: #ffebee;
+        }
+
+        .week-slip.green {
+            color: #388e3c;
+            background: #e8f5e9;
+        }
+
+        .week-slip.gray {
+            color: #666;
+            background: #f5f5f5;
+        }
+
+        /* Alerts */
+        .alert {
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .alert-error {
+            background: #ffebee;
+            color: #c62828;
+            border-left: 4px solid #d32f2f;
+        }
+
+        .alert-success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-left: 4px solid #4caf50;
+        }
+
+        .alert-info {
+            background: #e3f2fd;
+            color: #1565c0;
+            border-left: 4px solid #2196f3;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #333;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Hidden */
+        .hidden {
+            display: none;
+        }
+
+        /* Page Styles */
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>📅 JIRA Date Tracker</h1>
+        </div>
+        <nav>
+            <div class="nav-item active" data-page="home">
+                🏠 Home
+            </div>
+            <div class="nav-item" data-page="query">
+                🔍 Query Builder
+            </div>
+            <div class="nav-item" data-page="config">
+                ⚙️ Configuration
+            </div>
+            <div class="nav-item" data-page="reports">
+                📊 Reports
+            </div>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="breadcrumbs" id="breadcrumbs">
+                Home
+            </div>
+            <div class="connection-status" id="connectionStatus">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Checking...</span>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- Home Page -->
+            <div class="page active" id="page-home">
+                <h2>Welcome to JIRA Date Tracker</h2>
+                <p style="margin: 20px 0; color: #666;">
+                    Track JIRA project date movements and calculate calendar week slips.
+                </p>
+                <div style="margin-top: 30px;">
+                    <button class="btn btn-primary" onclick="navigateTo('query')">
+                        Start Query Builder →
+                    </button>
+                </div>
+            </div>
+
+            <!-- Query Builder Page -->
+            <div class="page" id="page-query">
+                <h2>Query Builder</h2>
+                
+                <div class="form-group" style="margin-top: 20px;">
+                    <label for="jqlInput">JQL Query</label>
+                    <textarea 
+                        id="jqlInput" 
+                        placeholder='Enter JQL query (e.g., project = PROJ AND status = "In Progress") or filter ID (e.g., filter=12345)'
+                    ></textarea>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <button class="btn btn-primary" onclick="executeQuery()" id="queryButton">
+                        Execute Query
+                    </button>
+                    <button class="btn" onclick="clearResults()" style="background: #f5f5f5;">
+                        Clear
+                    </button>
+                </div>
+
+                <div id="queryResults" class="hidden">
+                    <div class="tabs">
+                        <button class="tab active" data-tab="table">Table View</button>
+                        <button class="tab" data-tab="raw">Raw Data</button>
+                    </div>
+
+                    <div id="tab-table" class="tab-content">
+                        <div class="table-container">
+                            <table id="resultsTable">
+                                <thead id="tableHead"></thead>
+                                <tbody id="tableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="tab-raw" class="tab-content hidden">
+                        <pre id="rawData" style="background: #f5f5f5; padding: 20px; border-radius: 4px; overflow-x: auto;"></pre>
+                    </div>
+                </div>
+
+                <div id="queryLoading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <p>Executing query and fetching date history...</p>
+                </div>
+
+                <div id="queryError" class="alert alert-error hidden"></div>
+            </div>
+
+            <!-- Configuration Page -->
+            <div class="page" id="page-config">
+                <h2>Configuration</h2>
+                <p style="margin: 20px 0; color: #666;">
+                    Configuration is loaded from <code>config/fields.json</code>
+                </p>
+                <div id="configDisplay" style="background: #f5f5f5; padding: 20px; border-radius: 4px; margin-top: 20px;">
+                    <p>Loading configuration...</p>
+                </div>
+            </div>
+
+            <!-- Reports Page -->
+            <div class="page" id="page-reports">
+                <h2>Reports</h2>
+                <p style="margin: 20px 0; color: #666;">
+                    Reports and analytics will be available here.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Backend API URL
+        const BACKEND_API_URL = window.BACKEND_API_URL || 'http://localhost:8473';
+
+        // Navigation
+        function navigateTo(page) {
+            // Update active nav item
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.page === page) {
+                    item.classList.add('active');
+                }
+            });
+
+            // Update active page
+            document.querySelectorAll('.page').forEach(p => {
+                p.classList.remove('active');
+            });
+            document.getElementById(`page-${page}`).classList.add('active');
+
+            // Update breadcrumbs
+            updateBreadcrumbs(page);
+
+            // Load page-specific data
+            if (page === 'config') {
+                loadConfiguration();
+            }
+        }
+
+        function updateBreadcrumbs(page) {
+            const breadcrumbMap = {
+                'home': 'Home',
+                'query': 'Home > Query Builder',
+                'config': 'Home > Configuration',
+                'reports': 'Home > Reports'
+            };
+            document.getElementById('breadcrumbs').textContent = breadcrumbMap[page] || 'Home';
+        }
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabName = this.dataset.tab;
+                
+                // Update active tab
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+
+                // Show/hide tab content
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.add('hidden');
+                });
+                document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            });
+        });
+
+        // Sidebar navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                navigateTo(this.dataset.page);
+            });
+        });
+
+        // Connection status check
+        async function checkConnection() {
+            try {
+                const response = await fetch(`${BACKEND_API_URL}/health`);
+                if (response.ok) {
+                    updateConnectionStatus(true);
+                } else {
+                    updateConnectionStatus(false);
+                }
+            } catch (error) {
+                updateConnectionStatus(false);
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            if (connected) {
+                dot.classList.add('connected');
+                dot.classList.remove('disconnected');
+                text.textContent = 'Connected';
+            } else {
+                dot.classList.add('disconnected');
+                dot.classList.remove('connected');
+                text.textContent = 'Disconnected';
+            }
+        }
+
+        // Query execution
+        async function executeQuery() {
+            const jql = document.getElementById('jqlInput').value.trim();
+            const button = document.getElementById('queryButton');
+            const loading = document.getElementById('queryLoading');
+            const results = document.getElementById('queryResults');
+            const error = document.getElementById('queryError');
+
+            if (!jql) {
+                error.textContent = 'Please enter a JQL query';
+                error.classList.remove('hidden');
+                return;
+            }
+
+            // Reset UI
+            button.disabled = true;
+            loading.classList.remove('hidden');
+            results.classList.add('hidden');
+            error.classList.add('hidden');
+
+            try {
+                const response = await fetch(`${BACKEND_API_URL}/api/query`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        jql: jql,
+                        max_results: 100,
+                        include_history: true
+                    })
+                });
+
+                const responseText = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    throw new Error(`Invalid JSON response: ${responseText.substring(0, 200)}`);
+                }
+
+                if (data.success) {
+                    displayResults(data);
+                    results.classList.remove('hidden');
+                } else {
+                    error.textContent = data.error || 'Query execution failed';
+                    error.classList.remove('hidden');
+                }
+            } catch (err) {
+                error.textContent = `Error: ${err.message}`;
+                error.classList.remove('hidden');
+            } finally {
+                button.disabled = false;
+                loading.classList.add('hidden');
+            }
+        }
+
+        function displayResults(data) {
+            const issues = data.issues || [];
+            const fieldMetadata = data.field_metadata || {};
+
+            // Display raw data
+            document.getElementById('rawData').textContent = JSON.stringify(data, null, 2);
+
+            // Build table
+            if (issues.length === 0) {
+                document.getElementById('tableBody').innerHTML = 
+                    '<tr><td colspan="100%" style="text-align: center; padding: 40px; color: #666;">No issues found</td></tr>';
+                return;
+            }
+
+            // Get columns from first issue
+            const firstIssue = issues[0];
+            const fields = firstIssue.fields || {};
+            
+            // Determine columns (use config if available, otherwise use issue fields)
+            const columns = Object.keys(fields).filter(key => 
+                !key.includes('_history') && 
+                !key.includes('_week_slip') && 
+                !key.includes('_formatted') &&
+                key !== 'issuetype' &&
+                key !== 'project'
+            );
+
+            // Build header
+            const thead = document.getElementById('tableHead');
+            thead.innerHTML = '<tr>' + 
+                columns.map(col => {
+                    const fieldName = fieldMetadata[col]?.name || col;
+                    return `<th>${fieldName}</th>`;
+                }).join('') + 
+            '</tr>';
+
+            // Build body
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = issues.map(issue => {
+                const fields = issue.fields || {};
+                return '<tr>' + 
+                    columns.map(col => {
+                        const value = fields[col];
+                        let display = '';
+
+                        // Check if this is a date field with history
+                        if (fields[`${col}_formatted`]) {
+                            const current = fields[`${col}_formatted`];
+                            const history = fields[`${col}_history`] || [];
+                            const weekSlip = fields[`${col}_week_slip`];
+
+                            display = '<div class="date-cell">';
+                            display += `<div class="date-current">${current}</div>`;
+                            
+                            if (history.length > 0) {
+                                display += '<div class="date-history">' +
+                                    history.map(d => `<span>${d}</span>`).join('') +
+                                '</div>';
+                            }
+
+                            if (weekSlip) {
+                                display += `<div class="week-slip ${weekSlip.color}">${weekSlip.display}</div>`;
+                            }
+                            
+                            display += '</div>';
+                        } else if (value !== null && value !== undefined) {
+                            // Handle object values (like assignee)
+                            if (typeof value === 'object') {
+                                display = value.displayName || value.name || JSON.stringify(value);
+                            } else {
+                                display = String(value);
+                            }
+                        }
+
+                        return `<td>${display || '-'}</td>`;
+                    }).join('') + 
+                '</tr>';
+            }).join('');
+        }
+
+        function clearResults() {
+            document.getElementById('queryResults').classList.add('hidden');
+            document.getElementById('jqlInput').value = '';
+        }
+
+        // Load configuration
+        async function loadConfiguration() {
+            try {
+                const response = await fetch(`${BACKEND_API_URL}/api/config`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('configDisplay').innerHTML = 
+                        '<pre>' + JSON.stringify(data.config, null, 2) + '</pre>';
+                } else {
+                    document.getElementById('configDisplay').innerHTML = 
+                        '<p style="color: #d32f2f;">Error loading configuration: ' + data.error + '</p>';
+                }
+            } catch (error) {
+                document.getElementById('configDisplay').innerHTML = 
+                    '<p style="color: #d32f2f;">Error: ' + error.message + '</p>';
+            }
+        }
+
+        // Initialize
+        checkConnection();
+        setInterval(checkConnection, 30000); // Check every 30 seconds
+    </script>
+</body>
+</html>
+
