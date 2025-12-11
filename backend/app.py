@@ -22,6 +22,7 @@ from backend.date_utils import (
     extract_date_history,
     get_week_slip_color,
 )
+from backend.ai_summarizer import summarize_status_update
 
 # Load environment variables
 load_dotenv()

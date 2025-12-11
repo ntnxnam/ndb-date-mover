@@ -720,9 +720,23 @@
                             
                             display += '</div>';
                         } else if (value !== null && value !== undefined) {
-                            // Handle object values (like assignee, status)
-                            if (typeof value === 'object') {
-                                display = value.displayName || value.name || value.value || JSON.stringify(value);
+                            // Check if there's an AI summary available (for exec-friendly fields)
+                            const summary = fields[`${col}_summary`];
+                            if (summary) {
+                                display = `<div class="exec-summary">
+                                    <div class="summary-text">${summary}</div>
+                                    <div class="summary-original" style="font-size: 0.85em; color: #999; margin-top: 4px;">
+                                        <details><summary>View full text</summary>${fields[`${col}_original`] || value}</details>
+                                    </div>
+                                </div>`;
+                            } else if (typeof value === 'object') {
+                                // Handle object values (like assignee, status, fixVersions)
+                                if (Array.isArray(value)) {
+                                    // Handle arrays (like fixVersions)
+                                    display = value.map(v => v.name || v.displayName || v.value || String(v)).join(', ');
+                                } else {
+                                    display = value.displayName || value.name || value.value || JSON.stringify(value);
+                                }
                             } else {
                                 display = String(value);
                             }
