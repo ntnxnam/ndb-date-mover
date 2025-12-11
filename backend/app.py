@@ -53,7 +53,12 @@ CORS(app, resources={
 def after_request(response):
     """Ensure all API responses are JSON."""
     if request.path.startswith('/api/'):
-        response.headers['Content-Type'] = 'application/json'
+        # Only set JSON content type if not already set and response has content
+        if response.content_length and 'content-type' not in [h.lower() for h in response.headers.keys()]:
+            response.headers['Content-Type'] = 'application/json'
+        # Ensure JSON content type for all API responses
+        if response.content_length:
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
     return response
 
 
