@@ -23,9 +23,6 @@ if [ ! -f "venv/.dependencies_installed" ]; then
     touch venv/.dependencies_installed
 fi
 
-# Change to backend directory for running the app
-cd backend
-
 # Check for .env file (in project root)
 if [ ! -f "$PROJECT_ROOT/.env" ]; then
     echo "⚠️  Warning: .env file not found!"
@@ -33,10 +30,13 @@ if [ ! -f "$PROJECT_ROOT/.env" ]; then
     echo ""
 fi
 
+# Set PYTHONPATH to include project root for backend imports
+export PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH"
+
 # Start the backend server
 # Using unusual port 8473 to avoid conflicts
 echo "🌐 Backend API server starting on http://localhost:8473"
 echo "   Health check: http://localhost:8473/health"
 echo ""
-python3 app.py
+python3 -m backend.app
 
