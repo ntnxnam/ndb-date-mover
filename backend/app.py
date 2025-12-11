@@ -43,7 +43,10 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
 
 # Enable CORS for frontend - allow all origins for development
-CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+CORS(app, resources={
+    r"/api/*": {"origins": "*"},
+    r"/health": {"origins": "*"}
+}, supports_credentials=True)
 
 # Ensure JSON responses are properly formatted
 @app.after_request
