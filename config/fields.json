@@ -13,14 +13,14 @@
       "display_name": "Commit Gate Ready Estimation Date"
     },
     {
-      "id": "customfield_RISK_INDICATOR",
+      "id": "customfield_23560",
       "type": "text",
       "track_history": false,
       "display_name": "Risk Indicator",
       "note": "Replace customfield_RISK_INDICATOR with actual field ID from JIRA"
     },
     {
-      "id": "customfield_STATUS_UPDATE",
+      "id": "customfield_23073",
       "type": "text",
       "track_history": false,
       "display_name": "Status Update",
@@ -38,8 +38,8 @@
     "fixVersions",
     "customfield_11067",
     "customfield_35863",
-    "customfield_RISK_INDICATOR",
-    "customfield_STATUS_UPDATE"
+    "customfield_23560",
+    "customfield_23073"
   ],
   "date_format": "mm/dd/yyyy"
 }
