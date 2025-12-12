@@ -58,6 +58,7 @@ Then navigate to `http://localhost:6291` in your browser.
 - Date history tracking
 - Week slip calculations
 - Configuration management
+- Export functionality (CSV, Email)
 
 ### Separate Servers
 
@@ -94,6 +95,12 @@ pytest --cov=. --cov-report=html
 
 ## Recent Updates
 
+- ✅ **Email Export Functionality**: Send formatted HTML emails with CSV attachments
+  - HTML email body matching UI table display
+  - SMTP configuration via `config/smtp.json`
+  - Timezone support (default: IST/Asia/Kolkata)
+  - Always CC namratha.singh@nutanix.com
+  - Subject format: "TPM Bot: Project Dates and Effort Estimate - {date}"
 - ✅ JIRA API v2 changelog compliance (uses `expand=changelog`)
 - ✅ HistoryFetcher module for fetching date history
 - ✅ Field ID normalization and resolution
@@ -121,7 +128,8 @@ ndb-date-mover/
 │   ├── app.html         # Main application UI
 │   └── server.py        # Static file server
 ├── config/              # Configuration files
-│   └── fields.json      # Field configuration
+│   ├── fields.json      # Field configuration
+│   └── smtp.json        # SMTP email configuration
 ├── tests/               # Test files
 ├── requirements.txt     # Python dependencies
 ├── .env                 # Environment variables (not in git)

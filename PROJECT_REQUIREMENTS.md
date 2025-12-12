@@ -87,7 +87,10 @@ A web application for tracking and visualizing JIRA project date movements. The 
 - **Support sorting** by any column
 - **Support filtering** by column values
 - **Pagination** for large datasets
-- **Export functionality** (CSV, Excel)
+- **Export functionality** (CSV, Email)
+  - CSV export: Download data as CSV file
+  - Email export: Send formatted HTML email with CSV attachment
+  - PDF export: Temporarily hidden (to be fixed)
 
 ### 7. Date Field History Tracking
 
@@ -137,7 +140,50 @@ A web application for tracking and visualizing JIRA project date movements. The 
   - Gray for no change
 - **Tooltip**: Show original date and current date
 
-### 9. Self-Healing JIRA Connection
+### 9. Email Export Functionality ✅ COMPLETE
+
+#### Requirements
+- **Email export button** in UI next to CSV export
+- **HTML email body** matching UI table display:
+  - Full table with all columns and data
+  - Date history with strike-through formatting
+  - Week slip indicators with color coding
+  - Risk indicator color highlighting
+  - Change count and date difference metrics
+- **CSV attachment** included with every email
+- **SMTP configuration** via `config/smtp.json`:
+  - SMTP server, port, TLS/SSL settings
+  - From email and display name
+  - Timezone configuration (default: IST/Asia/Kolkata)
+  - Subject and body templates
+- **Timezone support**: Date formatting in email subject based on configured timezone
+- **Date format in subject**: `DD/Mon/YYYY` (e.g., `12/Dec/2025`)
+- **Always CC**: Automatically CC namratha.singh@nutanix.com on all emails
+- **Email footer**: "This is an automated email from the JIRA Date Tracker system created by Namratha Singh"
+
+#### Implementation
+- **Backend endpoint**: `POST /api/export/email`
+- **Email generation**: `prepare_email_html_body()` function creates HTML matching UI
+- **SMTP configuration**: Loaded from `config/smtp.json` at runtime
+- **Internal SMTP**: Uses mailrelay.dyn.nutanix.com:25 (no credentials required)
+- **Subject template**: "TPM Bot: Project Dates and Effort Estimate - {date}"
+- **Dual format**: HTML body (primary) + plain text fallback
+- **Error handling**: Validates SMTP config, handles authentication errors gracefully
+
+#### Configuration Example
+```json
+{
+  "smtp_server": "mailrelay.dyn.nutanix.com",
+  "smtp_port": 25,
+  "use_tls": false,
+  "from_email": "namratha.singh@nutanix.com",
+  "from_name": "JIRA Date Tracker",
+  "timezone": "Asia/Kolkata",
+  "subject_template": "TPM Bot: Project Dates and Effort Estimate - {date}"
+}
+```
+
+### 10. Self-Healing JIRA Connection
 
 #### Connection Management
 - **Reuse existing connections** when possible (connection pooling)

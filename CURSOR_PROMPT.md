@@ -72,6 +72,26 @@ Build a web application that helps Engineering Program Managers track JIRA proje
    - Handle non-JSON responses gracefully (HTML error pages, plain text, etc.)
    - Never crash on JSON parsing errors - provide helpful error messages instead
 
+8. **Email Export Functionality** ✅ COMPLETE
+   - **Email export button** next to CSV export in UI
+   - **HTML email body** matching UI table display with full formatting
+   - **CSV attachment** included with every email
+   - **SMTP configuration** via `config/smtp.json`:
+     - SMTP server, port, TLS settings
+     - From email and name
+     - Timezone configuration (default: IST/Asia/Kolkata)
+     - Subject and body templates
+   - **Timezone support**: Date formatting in email subject based on configured timezone
+   - **Date format in subject**: `DD/Mon/YYYY` (e.g., `12/Dec/2025`)
+   - **Always CC**: Automatically CC namratha.singh@nutanix.com on all emails
+   - **Email features**:
+     - HTML body with formatted table (date history, week slips, risk indicators)
+     - Plain text fallback for non-HTML clients
+     - CSV attachment for data export
+     - Footer: "Created by Namratha Singh"
+   - **Internal SMTP**: Uses mailrelay.dyn.nutanix.com:25 (no credentials required)
+   - **Subject template**: "TPM Bot: Project Dates and Effort Estimate - {date}"
+
 ### UI Requirements
 
 **Design:**
@@ -88,6 +108,7 @@ Build a web application that helps Engineering Program Managers track JIRA proje
 - Week slip indicators (bold, color-coded)
 - Connection status indicator
 - Error alerts/notifications
+- Export buttons (CSV, Email) - PDF hidden temporarily
 
 ### Technical Stack
 
@@ -105,15 +126,19 @@ Build a web application that helps Engineering Program Managers track JIRA proje
   - `GET /api/issue/{id}/history` - Get changelog
   - `GET /api/config` - Get configuration
   - `POST /api/test-connection` - Test connection
+  - `POST /api/export/<format>` - Export data (csv, pdf, excel)
+  - `POST /api/export/email` - Send email with HTML body and CSV attachment
   - `GET /health` - Health check
 
 **Frontend:**
 - ✅ Created main application (`frontend/app.html`) with full UI
 - ✅ Sidebar navigation with routing
 - ✅ Table component with date history and week slips
-- ✅ Date formatting utilities (always mm/dd/yyyy)
+- ✅ Date formatting utilities (always dd/mmm/yyyy)
 - ✅ Error handling with content-type checking
 - ✅ Connection status indicator
+- ✅ Export functionality (CSV, Email) with email recipient input
+- ✅ PDF export button hidden (temporarily) for future fixes
 
 ### Configuration File Example
 
@@ -165,6 +190,13 @@ Build a web application that helps Engineering Program Managers track JIRA proje
    - ✅ Test Plan: Documented resilience test scenarios
    - ✅ Files: `test_jira_client_json_parsing.py`, enhanced `jira_client.py`
 
+5. **Phase 5**: Email export functionality ✅ COMPLETE
+   - ✅ Email export with HTML body matching UI
+   - ✅ SMTP configuration and timezone support
+   - ✅ CSV attachment and email formatting
+   - ✅ Always CC functionality
+   - ✅ Files: `backend/app.py` (email export endpoint), `config/smtp.json`
+
 **For Each Phase:**
 - ✅ Tests written alongside feature implementation
 - ✅ Test plan document updated with new scenarios
@@ -180,6 +212,8 @@ Build a web application that helps Engineering Program Managers track JIRA proje
 - ✅ Connection issues are handled gracefully
 - ✅ Error messages are clear and helpful
 - ✅ UI is clean, minimal, and navigable
+- ✅ Email export functionality with HTML body and CSV attachment
+- ✅ SMTP configuration and timezone support
 - ✅ **All tests pass (unit, integration, E2E)**
 - ✅ **Test coverage ≥ 90% for all new code**
 - ✅ **Test plans updated and documented**
