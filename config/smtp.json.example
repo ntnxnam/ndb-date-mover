@@ -1,0 +1,24 @@
+{
+  "_comment": "Internal Nutanix SMTP Server Configuration (No credentials needed)",
+  "smtp_server": "mailrelay.dyn.nutanix.com",
+  "smtp_port": 25,
+  "use_tls": false,
+  "username": "",
+  "password": "",
+  "from_email": "your-email@nutanix.com",
+  "from_name": "JIRA Date Tracker",
+  "timezone": "Asia/Kolkata",
+  "default_recipients": [],
+  "subject_template": "TPM Bot: Project Dates and Effort Estimate - {date}",
+  "body_template": "Please find attached the JIRA Date Tracker export.\n\nGenerated on: {timestamp}\nTotal records: {record_count}\n\nThis is an automated email from the JIRA Date Tracker system created by Namratha Singh.",
+  "_alternative_external": {
+    "_comment": "For external SMTP servers (e.g., Gmail), use these settings:",
+    "smtp_server": "smtp.gmail.com",
+    "smtp_port": 587,
+    "use_tls": true,
+    "username": "your-email@gmail.com",
+    "password": "your-app-password",
+    "from_email": "your-email@gmail.com"
+  }
+}
+

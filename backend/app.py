@@ -9,6 +9,12 @@ Author: NDB Date Mover Team
 
 import logging
 import os
+import json
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 from typing import Dict, List
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask import Flask, jsonify, request, send_file, Response
@@ -17,6 +23,16 @@ from dotenv import load_dotenv
 from io import BytesIO, StringIO
 import csv
 from datetime import datetime
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    # Fallback for Python < 3.9
+    try:
+        from backports.zoneinfo import ZoneInfo
+    except ImportError:
+        # If zoneinfo is not available, we'll use UTC
+        ZoneInfo = None
+from pathlib import Path
 
 # Optional dependencies for export functionality
 REPORTLAB_AVAILABLE = False
@@ -1164,6 +1180,410 @@ def export_excel():
         )
     except Exception as e:
         logger.exception("Error generating Excel export")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+def prepare_email_html_body(issues: List[Dict], field_metadata: Dict, display_columns: List[str]) -> str:
+    """
+    Prepare HTML email body matching UI display.
+    
+    Returns:
+        str: HTML content for email body
+    """
+    if not issues:
+        return "<p>No data to display.</p>"
+    
+    # Get date fields from config
+    config_loader = ConfigLoader()
+    date_fields = config_loader.get_date_fields()
+    date_field_ids = [f.get("id") for f in date_fields if f.get("track_history")]
+    
+    # Build HTML table
+    html_parts = []
+    html_parts.append("""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+                font-size: 14px;
+                color: #333;
+                line-height: 1.5;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+                background: #fff;
+            }
+            thead {
+                background: #f8f8f8;
+            }
+            th {
+                padding: 12px;
+                text-align: left;
+                font-weight: 600;
+                color: #333;
+                border-bottom: 2px solid #ddd;
+                white-space: normal;
+                word-wrap: break-word;
+                max-width: 200px;
+                vertical-align: top;
+            }
+            td {
+                padding: 12px;
+                border-bottom: 1px solid #eee;
+                white-space: normal;
+                word-wrap: break-word;
+                max-width: 300px;
+            }
+            tr:hover {
+                background: #f8f8f8;
+            }
+            .date-current {
+                font-weight: 600;
+                color: #333;
+                margin-bottom: 4px;
+            }
+            .date-history {
+                font-size: 0.85em;
+                color: #999;
+                margin-top: 4px;
+            }
+            .date-history span {
+                text-decoration: line-through;
+                display: block;
+                margin-bottom: 2px;
+            }
+            .date-metrics {
+                font-size: 0.85em;
+                color: #666;
+                margin-top: 4px;
+            }
+            .week-slip {
+                font-weight: 700;
+                font-size: 1.1em;
+                padding: 4px 8px;
+                border-radius: 3px;
+                display: inline-block;
+            }
+            .week-slip.red {
+                color: #d32f2f;
+                background: #ffebee;
+            }
+            .week-slip.green {
+                color: #388e3c;
+                background: #e8f5e9;
+            }
+            .week-slip.gray {
+                color: #666;
+                background: #f5f5f5;
+            }
+            .risk-indicator {
+                padding: 4px 8px;
+                border-radius: 3px;
+                font-weight: 600;
+                display: inline-block;
+            }
+            .risk-indicator.red {
+                background: #ffebee;
+                color: #d32f2f;
+            }
+            .risk-indicator.yellow {
+                background: #fff9e6;
+                color: #f57c00;
+            }
+            .risk-indicator.green {
+                background: #e8f5e9;
+                color: #388e3c;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>JIRA Date Tracker Export</h2>
+        <p>Generated on: """ + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + f"""</p>
+        <p>Total records: {len(issues)}</p>
+        <table>
+            <thead>
+                <tr>
+    """)
+    
+    # Build header row
+    for col in display_columns:
+        field_name = field_metadata.get(col, {}).get("name", col)
+        html_parts.append(f"<th>{field_name}</th>")
+    
+    html_parts.append("""
+                </tr>
+            </thead>
+            <tbody>
+    """)
+    
+    # Build data rows
+    for issue in issues:
+        html_parts.append("<tr>")
+        fields = issue.get("fields", {})
+        
+        for col in display_columns:
+            # Get the actual field value
+            if col == 'key':
+                value = issue.get('key', issue.get('id', ''))
+            else:
+                value = fields.get(col)
+            
+            html_parts.append("<td>")
+            
+            # Check if this is a date field with history
+            if col in date_field_ids and fields.get(f"{col}_formatted"):
+                current = fields.get(f"{col}_formatted", "")
+                history = fields.get(f"{col}_history", [])
+                change_count = fields.get(f"{col}_change_count", 0)
+                week_slip = fields.get(f"{col}_week_slip", {})
+                date_difference = fields.get(f"{col}_date_difference", "")
+                
+                if current:
+                    html_parts.append(f'<div class="date-current">{current}</div>')
+                
+                if history:
+                    html_parts.append('<div class="date-history">')
+                    for hist_date in history:
+                        html_parts.append(f'<span>{hist_date}</span>')
+                    html_parts.append('</div>')
+                
+                # Add metrics
+                metrics_parts = []
+                if change_count > 0:
+                    metrics_parts.append(f"Changes: {change_count}")
+                if date_difference:
+                    metrics_parts.append(f"Diff: {date_difference}")
+                if isinstance(week_slip, dict) and week_slip.get("display"):
+                    slip_display = week_slip.get("display", "")
+                    slip_color = week_slip.get("color", "gray")
+                    metrics_parts.append(f'<span class="week-slip {slip_color}">{slip_display}</span>')
+                
+                if metrics_parts:
+                    html_parts.append(f'<div class="date-metrics">{" | ".join(metrics_parts)}</div>')
+            else:
+                # Handle other field types
+                if value is None:
+                    display = '-'
+                elif isinstance(value, dict):
+                    # Handle risk indicator with color
+                    if col == 'customfield_23073':  # Risk Indicator field
+                        risk_value = value.get('value') or value.get('name') or value.get('displayName') or str(value)
+                        risk_lower = str(risk_value).lower()
+                        if 'red' in risk_lower or 'high' in risk_lower:
+                            color_class = 'red'
+                        elif 'yellow' in risk_lower or 'medium' in risk_lower:
+                            color_class = 'yellow'
+                        elif 'green' in risk_lower or 'low' in risk_lower:
+                            color_class = 'green'
+                        else:
+                            color_class = ''
+                        if color_class:
+                            display = f'<span class="risk-indicator {color_class}">{risk_value}</span>'
+                        else:
+                            display = str(risk_value)
+                    else:
+                        display = value.get('displayName') or value.get('name') or value.get('value') or str(value)
+                elif isinstance(value, list):
+                    display = ', '.join([str(v.get('name') or v.get('displayName') or v) for v in value])
+                else:
+                    display = str(value)
+                
+                html_parts.append(display)
+            
+            html_parts.append("</td>")
+        
+        html_parts.append("</tr>")
+    
+    html_parts.append("""
+            </tbody>
+        </table>
+        <p style="color: #666; font-size: 0.9em; margin-top: 20px;">
+            This is an automated email from the JIRA Date Tracker system created by Namratha Singh.
+        </p>
+    </body>
+    </html>
+    """)
+    
+    return ''.join(html_parts)
+
+
+def load_smtp_config() -> Dict:
+    """
+    Load SMTP configuration from config/smtp.json.
+    
+    Returns:
+        Dict: SMTP configuration
+        
+    Raises:
+        FileNotFoundError: If config file doesn't exist
+        json.JSONDecodeError: If config file is invalid JSON
+    """
+    project_root = Path(__file__).parent.parent
+    smtp_config_path = project_root / "config" / "smtp.json"
+    
+    if not smtp_config_path.exists():
+        raise FileNotFoundError(
+            f"SMTP configuration file not found: {smtp_config_path}. "
+            f"Please create config/smtp.json with your SMTP settings."
+        )
+    
+    with open(smtp_config_path, "r") as f:
+        return json.load(f)
+
+
+@app.route("/api/export/email", methods=["POST"])
+def export_email():
+    """Export data as CSV and send via email."""
+    try:
+        data = request.get_json() or {}
+        issues = data.get("issues", [])
+        field_metadata = data.get("field_metadata", {})
+        display_columns = data.get("display_columns", [])
+        recipients = data.get("recipients", [])
+        
+        if not issues:
+            return jsonify({"success": False, "error": "No data to export"}), 400
+        
+        if not recipients:
+            return jsonify({"success": False, "error": "No email recipients provided"}), 400
+        
+        # Load SMTP configuration
+        try:
+            smtp_config = load_smtp_config()
+        except FileNotFoundError as e:
+            return jsonify({"success": False, "error": str(e)}), 404
+        except json.JSONDecodeError as e:
+            return jsonify({"success": False, "error": f"Invalid SMTP config JSON: {str(e)}"}), 500
+        
+        # Validate required SMTP settings
+        required_fields = ["smtp_server", "smtp_port", "from_email"]
+        missing_fields = [f for f in required_fields if not smtp_config.get(f)]
+        if missing_fields:
+            return jsonify({
+                "success": False,
+                "error": f"Missing required SMTP config fields: {', '.join(missing_fields)}"
+            }), 400
+        
+        # Generate CSV content
+        headers, rows = prepare_export_data(issues, field_metadata, display_columns)
+        text_buffer = StringIO()
+        writer = csv.writer(text_buffer)
+        writer.writerow(headers)
+        writer.writerows(rows)
+        csv_content = text_buffer.getvalue()
+        
+        # Generate HTML email body matching UI
+        html_body = prepare_email_html_body(issues, field_metadata, display_columns)
+        
+        # Prepare email with timezone support
+        timezone_str = smtp_config.get("timezone", "Asia/Kolkata")
+        if ZoneInfo is not None:
+            try:
+                tz = ZoneInfo(timezone_str)
+                now_tz = datetime.now(tz)
+            except Exception as e:
+                logger.warning(f"Invalid timezone '{timezone_str}': {e}, falling back to IST (Asia/Kolkata)")
+                try:
+                    tz = ZoneInfo("Asia/Kolkata")
+                    now_tz = datetime.now(tz)
+                except Exception:
+                    now_tz = datetime.now()
+        else:
+            logger.warning("zoneinfo not available, using system local time")
+            now_tz = datetime.now()
+        
+        timestamp = now_tz.strftime("%Y-%m-%d %H:%M:%S")
+        date_str = now_tz.strftime("%d/%b/%Y")
+        
+        subject_template = smtp_config.get("subject_template", "TPM Bot: Project Dates and Effort Estimate - {date}")
+        subject = subject_template.format(
+            date=date_str,
+            timestamp=timestamp
+        )
+        
+        # Always CC namratha.singh@nutanix.com
+        cc_email = "namratha.singh@nutanix.com"
+        # Remove CC email from To list if it's already there to avoid duplicates
+        recipients_clean = [r for r in recipients if r.lower() != cc_email.lower()]
+        
+        # Create email message
+        msg = MIMEMultipart()
+        msg['From'] = f"{smtp_config.get('from_name', 'JIRA Date Tracker')} <{smtp_config['from_email']}>"
+        
+        if recipients_clean:
+            msg['To'] = ", ".join(recipients_clean)
+        else:
+            # If CC email was the only recipient, keep it in To as well
+            msg['To'] = cc_email
+        
+        msg['Cc'] = cc_email
+        msg['Subject'] = subject
+        
+        # Attach HTML body (primary) and plain text fallback
+        plain_text_body = f"JIRA Date Tracker Export\n\nGenerated on: {timestamp}\nTotal records: {len(issues)}\n\nPlease view the HTML version of this email or check the attached CSV file for details.\n\nThis is an automated email from the JIRA Date Tracker system created by Namratha Singh."
+        msg.attach(MIMEText(plain_text_body, 'plain'))
+        msg.attach(MIMEText(html_body, 'html'))
+        
+        # Attach CSV file
+        filename = f"jira_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        attachment = MIMEBase('application', 'octet-stream')
+        attachment.set_payload(csv_content.encode('utf-8'))
+        encoders.encode_base64(attachment)
+        attachment.add_header(
+            'Content-Disposition',
+            f'attachment; filename= {filename}'
+        )
+        msg.attach(attachment)
+        
+        # Send email
+        smtp_server = smtp_config['smtp_server']
+        smtp_port = int(smtp_config.get('smtp_port', 587))
+        use_tls = smtp_config.get('use_tls', True)
+        username = smtp_config.get('username') or smtp_config['from_email']
+        password = smtp_config.get('password', '')
+        
+        try:
+            server = smtplib.SMTP(smtp_server, smtp_port)
+            if use_tls:
+                server.starttls()
+            
+            if password:
+                server.login(username, password)
+            
+            server.send_message(msg)
+            server.quit()
+            
+            logger.info(f"Email sent successfully to {', '.join(recipients_clean)} (CC: {cc_email})")
+            return jsonify({
+                "success": True,
+                "message": f"Email sent successfully to {', '.join(recipients_clean)} (CC: {cc_email})"
+            }), 200
+        except smtplib.SMTPAuthenticationError as e:
+            logger.error(f"SMTP authentication failed: {str(e)}")
+            return jsonify({
+                "success": False,
+                "error": f"SMTP authentication failed: {str(e)}"
+            }), 401
+        except smtplib.SMTPException as e:
+            logger.error(f"SMTP error: {str(e)}")
+            return jsonify({
+                "success": False,
+                "error": f"SMTP error: {str(e)}"
+            }), 500
+        except Exception as e:
+            logger.exception("Error sending email")
+            return jsonify({
+                "success": False,
+                "error": f"Error sending email: {str(e)}"
+            }), 500
+            
+    except Exception as e:
+        logger.exception("Error in email export")
         return jsonify({"success": False, "error": str(e)}), 500
 
 

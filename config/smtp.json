@@ -1,0 +1,14 @@
+{
+  "smtp_server": "mailrelay.dyn.nutanix.com",
+  "smtp_port": 25,
+  "use_tls": false,
+  "username": "",
+  "password": "",
+  "from_email": "namratha.singh@nutanix.com",
+  "from_name": "JIRA Date Tracker",
+  "timezone": "Asia/Kolkata",
+  "default_recipients": [],
+  "subject_template": "TPM Bot: Project Dates and Effort Estimate - {date}",
+  "body_template": "Please find attached the JIRA Date Tracker export.\n\nGenerated on: {timestamp}\nTotal records: {record_count}\n\nThis is an automated email from the JIRA Date Tracker system created by Namratha Singh."
+}
+

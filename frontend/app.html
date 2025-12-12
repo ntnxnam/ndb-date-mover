@@ -551,8 +551,9 @@
                                 <div id="paginationControls" style="display: flex; gap: 5px;"></div>
                                 <div style="margin-left: 15px; padding-left: 15px; border-left: 1px solid #ddd;">
                                     <span style="color: #666; font-size: 0.9em; margin-right: 8px;">Export:</span>
-                                    <a href="#" id="exportPDF" style="color: #0066cc; text-decoration: none; font-size: 0.9em; margin-right: 10px; padding: 4px 8px; border-radius: 3px; transition: background 0.2s;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">PDF</a>
-                                    <a href="#" id="exportCSV" style="color: #0066cc; text-decoration: none; font-size: 0.9em; padding: 4px 8px; border-radius: 3px; transition: background 0.2s;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">CSV</a>
+                                    <a href="#" id="exportPDF" style="display: none; color: #0066cc; text-decoration: none; font-size: 0.9em; margin-right: 10px; padding: 4px 8px; border-radius: 3px; transition: background 0.2s;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">PDF</a>
+                                    <a href="#" id="exportCSV" style="color: #0066cc; text-decoration: none; font-size: 0.9em; margin-right: 10px; padding: 4px 8px; border-radius: 3px; transition: background 0.2s;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">CSV</a>
+                                    <a href="#" id="exportEmail" style="color: #0066cc; text-decoration: none; font-size: 0.9em; padding: 4px 8px; border-radius: 3px; transition: background 0.2s;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">Email</a>
                                 </div>
                             </div>
                         </div>
@@ -1323,7 +1324,8 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error(`Export failed: ${response.statusText}`);
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `Export failed: ${response.statusText}`);
                 }
 
                 // Get filename from Content-Disposition header or use default
@@ -1352,6 +1354,61 @@
             }
         }
 
+        // Email export function
+        async function exportEmail() {
+            if (!allIssues || allIssues.length === 0) {
+                alert('No data to export. Please run a query first.');
+                return;
+            }
+
+            // Prompt for email addresses
+            const emailInput = prompt('Enter email addresses (comma-separated):');
+            if (!emailInput || !emailInput.trim()) {
+                return; // User cancelled or entered nothing
+            }
+
+            // Validate email addresses
+            const emails = emailInput.split(',').map(e => e.trim()).filter(e => e);
+            if (emails.length === 0) {
+                alert('Please enter at least one valid email address.');
+                return;
+            }
+
+            // Basic email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const invalidEmails = emails.filter(e => !emailRegex.test(e));
+            if (invalidEmails.length > 0) {
+                alert('Invalid email addresses: ' + invalidEmails.join(', '));
+                return;
+            }
+
+            try {
+                const response = await fetch(`${BACKEND_API_URL}/api/export/email`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        issues: allIssues,
+                        field_metadata: window.fieldMetadata || {},
+                        display_columns: window.displayColumns || [],
+                        recipients: emails
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `Email export failed: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                alert(`Email sent successfully to: ${emails.join(', ')}`);
+            } catch (error) {
+                console.error('Email export error:', error);
+                alert('Error sending email: ' + error.message);
+            }
+        }
+
         // Handle page size change
         document.addEventListener('DOMContentLoaded', function() {
             const pageSizeSelect = document.getElementById('pageSize');
@@ -1373,6 +1430,10 @@
             document.getElementById('exportCSV')?.addEventListener('click', function(e) {
                 e.preventDefault();
                 exportData('csv');
+            });
+            document.getElementById('exportEmail')?.addEventListener('click', function(e) {
+                e.preventDefault();
+                exportEmail();
             });
         });
 
