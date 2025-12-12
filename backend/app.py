@@ -11,9 +11,46 @@ import logging
 import os
 from typing import Dict, List
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file, Response
 from flask_cors import CORS
 from dotenv import load_dotenv
+from io import BytesIO, StringIO
+import csv
+from datetime import datetime
+
+# Optional dependencies for export functionality
+REPORTLAB_AVAILABLE = False
+OPENPYXL_AVAILABLE = False
+
+try:
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter, landscape
+    from reportlab.lib.units import inch
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, KeepTogether
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_TOP
+    REPORTLAB_AVAILABLE = True
+except ImportError:
+    # Set defaults if reportlab not available
+    SimpleDocTemplate = None
+    Table = None
+    TableStyle = None
+    Paragraph = None
+    colors = None
+    landscape = None
+    letter = None
+    inch = None
+    getSampleStyleSheet = None
+    ParagraphStyle = None
+    TA_TOP = None
+    pass  # Will be logged after logger is initialized
+
+try:
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill
+    OPENPYXL_AVAILABLE = True
+except ImportError:
+    pass  # Will be logged in export function
 
 from backend.jira_client import JiraClient, create_jira_client
 from backend.config_loader import ConfigLoader, load_config
@@ -740,6 +777,394 @@ def get_config():
             ),
             500,
         )
+
+
+def prepare_export_data(issues: List[Dict], field_metadata: Dict, display_columns: List[str]) -> tuple:
+    """
+    Prepare data for export with separate date diff columns.
+    
+    Returns:
+        tuple: (headers, rows) where headers includes date diff columns
+    """
+    if not issues:
+        return [], []
+    
+    # Get date fields from config
+    config_loader = ConfigLoader()
+    date_fields = config_loader.get_date_fields()
+    date_field_ids = [f.get("id") for f in date_fields if f.get("track_history")]
+    
+    # Build headers - include date diff columns for date fields
+    headers = []
+    date_diff_columns = {}  # Map field_id to its diff column index
+    
+    for col in display_columns:
+        headers.append(field_metadata.get(col, {}).get("name", col))
+        # If this is a date field, add a date diff column after it
+        if col in date_field_ids:
+            field_name = field_metadata.get(col, {}).get("name", col)
+            headers.append(f"{field_name} - Date Difference")
+            date_diff_columns[col] = len(headers) - 1
+    
+    # Build rows
+    rows = []
+    for issue in issues:
+        row = []
+        fields = issue.get("fields", {})
+        
+        for col in display_columns:
+            # Get the actual field value
+            if col == 'key':
+                value = issue.get('key', issue.get('id', ''))
+            else:
+                value = fields.get(col)
+            
+            # Format the value for display
+            if value is None:
+                display_value = ''
+            elif isinstance(value, dict):
+                display_value = value.get('displayName') or value.get('name') or value.get('value') or str(value)
+            elif isinstance(value, list):
+                display_value = ', '.join([str(v.get('name') or v.get('displayName') or v) for v in value])
+            else:
+                display_value = str(value)
+            
+            # For date fields, use formatted date if available
+            if col in date_field_ids and fields.get(f"{col}_formatted"):
+                display_value = fields.get(f"{col}_formatted", display_value)
+            
+            row.append(display_value)
+            
+            # Add date diff column if this is a date field
+            if col in date_diff_columns:
+                week_slip = fields.get(f"{col}_week_slip", {})
+                if isinstance(week_slip, dict):
+                    diff_display = week_slip.get("display", "N/A")
+                else:
+                    diff_display = "N/A"
+                row.append(diff_display)
+        
+        rows.append(row)
+    
+    return headers, rows
+
+
+@app.route("/api/export/<format>", methods=["POST"])
+def export_data(format):
+    """Export data in the specified format (pdf, csv, excel)."""
+    if format == "pdf":
+        if not REPORTLAB_AVAILABLE:
+            return jsonify({"success": False, "error": "PDF export requires reportlab library. Install with: pip install reportlab"}), 500
+        return export_pdf()
+    elif format == "csv":
+        return export_csv()
+    elif format == "excel":
+        if not OPENPYXL_AVAILABLE:
+            return jsonify({"success": False, "error": "Excel export requires openpyxl library. Install with: pip install openpyxl"}), 500
+        return export_excel()
+    else:
+        return jsonify({"success": False, "error": f"Unsupported format: {format}"}), 400
+
+
+def prepare_pdf_data(issues: List[Dict], field_metadata: Dict, display_columns: List[str]) -> tuple:
+    """
+    Prepare data for PDF export matching UI display (no separate date diff columns).
+    
+    Returns:
+        tuple: (headers, rows) matching what's shown in the UI
+    """
+    if not issues:
+        return [], []
+    
+    # Get date fields from config
+    config_loader = ConfigLoader()
+    date_fields = config_loader.get_date_fields()
+    date_field_ids = [f.get("id") for f in date_fields if f.get("track_history")]
+    
+    # Build headers - just the display columns, no separate date diff columns
+    headers = []
+    for col in display_columns:
+        headers.append(field_metadata.get(col, {}).get("name", col))
+    
+    # Build rows matching UI display
+    rows = []
+    for issue in issues:
+        row = []
+        fields = issue.get("fields", {})
+        
+        for col in display_columns:
+            # Get the actual field value
+            if col == 'key':
+                value = issue.get('key', issue.get('id', ''))
+                display_value = str(value) if value else ''
+            else:
+                value = fields.get(col)
+                
+                # Check if this is a date field with formatted display
+                if col in date_field_ids and fields.get(f"{col}_formatted"):
+                    # For date fields, show current date with history info inline
+                    current = fields.get(f"{col}_formatted", "")
+                    history = fields.get(f"{col}_history", [])
+                    change_count = fields.get(f"{col}_change_count", 0)
+                    week_slip = fields.get(f"{col}_week_slip", {})
+                    
+                    # Build display like UI: current date, then history, then metrics
+                    # Truncate for PDF to avoid cell overflow
+                    display_parts = [current] if current else []
+                    
+                    if history:
+                        # Limit history to first 3 dates for PDF
+                        history_display = history[:3] if len(history) > 3 else history
+                        history_str = " | ".join([f"~~{h}~~" for h in history_display])
+                        if len(history) > 3:
+                            history_str += f" (+{len(history) - 3} more)"
+                        display_parts.append(history_str)
+                    
+                    if change_count > 0:
+                        display_parts.append(f"Chg:{change_count}")
+                    
+                    if isinstance(week_slip, dict) and week_slip.get("display"):
+                        display_parts.append(week_slip.get("display", ""))
+                    
+                    display_value = " | ".join(display_parts)
+                    # Truncate total length to 100 chars for PDF
+                    if len(display_value) > 100:
+                        display_value = display_value[:97] + "..."
+                elif value is None:
+                    display_value = ''
+                elif isinstance(value, dict):
+                    display_value = value.get('displayName') or value.get('name') or value.get('value') or str(value)
+                elif isinstance(value, list):
+                    display_value = ', '.join([str(v.get('name') or v.get('displayName') or v) for v in value])
+                else:
+                    display_value = str(value)
+                
+                # Truncate long values for PDF (max 80 chars per cell)
+                if len(display_value) > 80:
+                    display_value = display_value[:77] + "..."
+            
+            row.append(display_value)
+        
+        rows.append(row)
+    
+    return headers, rows
+
+
+def export_pdf():
+    """Export data as PDF in landscape mode matching UI display."""
+    try:
+        data = request.get_json() or {}
+        issues = data.get("issues", [])
+        field_metadata = data.get("field_metadata", {})
+        display_columns = data.get("display_columns", [])
+        
+        if not issues:
+            return jsonify({"success": False, "error": "No data to export"}), 400
+        
+        headers, rows = prepare_pdf_data(issues, field_metadata, display_columns)
+        
+        # Create PDF in memory
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), 
+                               rightMargin=0.3*inch, leftMargin=0.3*inch,
+                               topMargin=0.3*inch, bottomMargin=0.3*inch)
+        
+        # Create styles for text wrapping
+        styles = getSampleStyleSheet()
+        normal_style = ParagraphStyle(
+            'Normal',
+            parent=styles['Normal'],
+            fontSize=6,
+            leading=7,
+            alignment=TA_LEFT,
+            wordWrap='CJK'  # Enable word wrapping
+        )
+        header_style = ParagraphStyle(
+            'Header',
+            parent=styles['Normal'],
+            fontSize=7,
+            leading=8,
+            alignment=TA_LEFT,
+            fontName='Helvetica-Bold',
+            wordWrap='CJK'
+        )
+        
+        # Convert table data to Paragraphs for proper text wrapping
+        def wrap_text(text, style):
+            """Convert text to Paragraph for wrapping."""
+            if not text:
+                return Paragraph('', style)
+            try:
+                # Replace special characters that might break PDF rendering
+                text = str(text).replace('~~', '')  # Remove strike-through markers
+                # Escape HTML/XML special characters for Paragraph
+                text = text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                # Replace quotes that might cause issues
+                text = text.replace('"', '&quot;').replace("'", '&#39;')
+                return Paragraph(text, style)
+            except Exception as e:
+                logger.warning(f"Error wrapping text for PDF: {str(e)}, using empty paragraph")
+                # Always return a Paragraph object, never a string
+                try:
+                    return Paragraph(str(text).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')[:500], style)
+                except:
+                    return Paragraph('', style)
+        
+        # Build table data with wrapped text
+        wrapped_table_data = []
+        
+        # Headers row
+        wrapped_headers = [wrap_text(h, header_style) for h in headers]
+        wrapped_table_data.append(wrapped_headers)
+        
+        # Data rows
+        for row in rows:
+            wrapped_row = [wrap_text(cell, normal_style) for cell in row]
+            wrapped_table_data.append(wrapped_row)
+        
+        # Create table with column widths (auto-size based on content)
+        col_widths = []
+        if headers:
+            # Estimate width: landscape letter is ~792 points wide, minus margins
+            available_width = landscape(letter)[0] - 0.6*inch
+            num_cols = len(headers)
+            base_width = available_width / num_cols
+            col_widths = [base_width] * num_cols
+        
+        table = Table(wrapped_table_data, colWidths=col_widths if col_widths else None, repeatRows=1)
+        
+        # Style the table
+        style = TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 7),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('LEFTPADDING', (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 6),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+        ])
+        table.setStyle(style)
+        
+        # Build PDF
+        elements = [table]
+        doc.build(elements)
+        
+        buffer.seek(0)
+        filename = f"jira_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        
+        return send_file(
+            buffer,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        logger.exception("Error generating PDF export")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+def export_csv():
+    """Export data as CSV."""
+    try:
+        data = request.get_json() or {}
+        issues = data.get("issues", [])
+        field_metadata = data.get("field_metadata", {})
+        display_columns = data.get("display_columns", [])
+        
+        if not issues:
+            return jsonify({"success": False, "error": "No data to export"}), 400
+        
+        headers, rows = prepare_export_data(issues, field_metadata, display_columns)
+        
+        # Create CSV in memory (text mode, not binary)
+        text_buffer = StringIO()
+        writer = csv.writer(text_buffer)
+        writer.writerow(headers)
+        writer.writerows(rows)
+        
+        # Get the string content and encode to bytes
+        csv_content = text_buffer.getvalue()
+        filename = f"jira_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        
+        return Response(
+            csv_content.encode('utf-8'),
+            mimetype='text/csv; charset=utf-8',
+            headers={'Content-Disposition': f'attachment; filename={filename}'}
+        )
+    except Exception as e:
+        logger.exception("Error generating CSV export")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+def export_excel():
+    """Export data as Excel."""
+    if not OPENPYXL_AVAILABLE:
+        return jsonify({"success": False, "error": "openpyxl library not installed"}), 500
+    
+    try:
+        data = request.get_json() or {}
+        issues = data.get("issues", [])
+        field_metadata = data.get("field_metadata", {})
+        display_columns = data.get("display_columns", [])
+        
+        if not issues:
+            return jsonify({"success": False, "error": "No data to export"}), 400
+        
+        headers, rows = prepare_export_data(issues, field_metadata, display_columns)
+        
+        # Create Excel workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "JIRA Export"
+        
+        # Add headers
+        for col_idx, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_idx, value=header)
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
+            cell.alignment = Alignment(horizontal="left", vertical="center")
+        
+        # Add rows
+        for row_idx, row_data in enumerate(rows, 2):
+            for col_idx, value in enumerate(row_data, 1):
+                ws.cell(row=row_idx, column=col_idx, value=value)
+        
+        # Auto-adjust column widths
+        for col in ws.columns:
+            max_length = 0
+            column = col[0].column_letter
+            for cell in col:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column].width = adjusted_width
+        
+        # Save to buffer
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        filename = f"jira_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        
+        return send_file(
+            buffer,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        logger.exception("Error generating Excel export")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/health")

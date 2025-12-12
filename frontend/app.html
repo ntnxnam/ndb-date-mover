@@ -248,12 +248,13 @@
         
         .table-container table {
             min-width: 100%;
-            white-space: nowrap;
+            table-layout: auto;
         }
         
         .table-container td {
             white-space: normal;
             word-wrap: break-word;
+            word-break: break-word;
             max-width: 300px;
         }
 
@@ -274,6 +275,11 @@
             border-bottom: 2px solid #ddd;
             cursor: pointer;
             user-select: none;
+            white-space: normal;
+            word-wrap: break-word;
+            word-break: break-word;
+            max-width: 200px;
+            vertical-align: top;
         }
 
         th:hover {
@@ -541,7 +547,14 @@
                                 </select>
                             </div>
                             <div id="paginationInfo" style="color: #666; font-size: 0.9em;"></div>
-                            <div id="paginationControls" style="display: flex; gap: 5px;"></div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div id="paginationControls" style="display: flex; gap: 5px;"></div>
+                                <div style="margin-left: 15px; padding-left: 15px; border-left: 1px solid #ddd;">
+                                    <span style="color: #666; font-size: 0.9em; margin-right: 8px;">Export:</span>
+                                    <a href="#" id="exportPDF" style="color: #0066cc; text-decoration: none; font-size: 0.9em; margin-right: 10px; padding: 4px 8px; border-radius: 3px; transition: background 0.2s;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">PDF</a>
+                                    <a href="#" id="exportCSV" style="color: #0066cc; text-decoration: none; font-size: 0.9em; padding: 4px 8px; border-radius: 3px; transition: background 0.2s;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">CSV</a>
+                                </div>
+                            </div>
                         </div>
                         <div class="table-container">
                             <table id="resultsTable">
@@ -1289,6 +1302,56 @@
             }
         }
 
+        // Export functions
+        async function exportData(format) {
+            if (!allIssues || allIssues.length === 0) {
+                alert('No data to export. Please run a query first.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${BACKEND_API_URL}/api/export/${format}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        issues: allIssues,
+                        field_metadata: window.fieldMetadata || {},
+                        display_columns: window.displayColumns || []
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Export failed: ${response.statusText}`);
+                }
+
+                // Get filename from Content-Disposition header or use default
+                const contentDisposition = response.headers.get('Content-Disposition');
+                let filename = `jira_export.${format}`;
+                if (contentDisposition) {
+                    const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+                    if (filenameMatch) {
+                        filename = filenameMatch[1];
+                    }
+                }
+
+                // Download the file
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch (error) {
+                console.error('Export error:', error);
+                alert('Error exporting data: ' + error.message);
+            }
+        }
+
         // Handle page size change
         document.addEventListener('DOMContentLoaded', function() {
             const pageSizeSelect = document.getElementById('pageSize');
@@ -1301,6 +1364,16 @@
                     }
                 });
             }
+
+            // Add export button handlers
+            document.getElementById('exportPDF')?.addEventListener('click', function(e) {
+                e.preventDefault();
+                exportData('pdf');
+            });
+            document.getElementById('exportCSV')?.addEventListener('click', function(e) {
+                e.preventDefault();
+                exportData('csv');
+            });
         });
 
         // Initialize
