@@ -95,6 +95,16 @@ pytest --cov=. --cov-report=html
 
 ## Recent Updates
 
+- ✅ **Story Points Calculation**: Calculate and display story points breakdown by Dev/QA and resolution
+  - Work item filtering (excludes Epic, Feature, Initiative, X-FEAT, Capability)
+  - Dev/QA grouping (Dev = not Test/Test Plan, QA = Test/Test Plan)
+  - Resolution categorization (Positive, Negative, Unresolved)
+  - Story points field: `customfield_10002` (configurable)
+  - Display format: Story points only (no counts), grouped by Dev/QA
+  - **Hyperlinks**: Story points numbers are clickable links to JQL queries
+  - **Total section**: Shows sum of all categories in normal font
+  - Performance optimized: Minimal fields fetched, no history for related tickets
+
 - ✅ **Email Export Functionality**: Send formatted HTML emails with CSV attachments
   - HTML email body matching UI table display
   - SMTP configuration via `config/smtp.json`

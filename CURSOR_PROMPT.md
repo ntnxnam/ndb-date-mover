@@ -119,6 +119,7 @@ Build a web application that helps Engineering Program Managers track JIRA proje
 - ✅ Created date utilities (`backend/date_utils.py`)
 - ✅ Created history fetcher (`backend/history_fetcher.py`) - Fetches history for configured date fields
 - ✅ Created AI summarizer (`backend/ai_summarizer.py`) - Executive-friendly text summarization
+- ✅ Created story points calculator (`backend/story_points_calculator.py`) - Story points breakdown by Dev/QA and resolution
 - ✅ Created shared utilities (`backend/utils.py`) - Error handling helpers
 - ✅ Endpoints implemented:
   - `POST /api/query` - Execute JQL with date enrichment
@@ -269,6 +270,8 @@ Build a web application that helps Engineering Program Managers track JIRA proje
    - ✅ Week slip calculation display
    - ✅ Error message display
    - ✅ Navigation and routing
+   - ✅ Story points breakdown rendering with hyperlinks
+   - ✅ Story points HTML rendering (bold headers, clickable links, total section)
 
 5. **End-to-End Tests**
    - Complete flow: JQL input → query execution → table display
@@ -276,6 +279,7 @@ Build a web application that helps Engineering Program Managers track JIRA proje
    - Week slip calculation flow
    - Error handling flow
    - Connection recovery flow
+   - Story points calculation flow
 
 **Test Plan Updates:**
 - Create/update test plan document for each feature

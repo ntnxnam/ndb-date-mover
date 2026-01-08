@@ -616,6 +616,201 @@ def test_something():
 
 ---
 
+## Phase 6: Story Points Calculation Tests
+
+### 6.1 Work Item Filtering
+
+#### Test Cases:
+- ✅ **TC-6.1.1**: Task is identified as work item
+  - Input: Issue type "Task"
+  - Expected: Included in story points calculation
+  - Test: Unit
+
+- ✅ **TC-6.1.2**: Bug is identified as work item
+  - Input: Issue type "Bug"
+  - Expected: Included in story points calculation
+  - Test: Unit
+
+- ✅ **TC-6.1.3**: Test is identified as work item
+  - Input: Issue type "Test"
+  - Expected: Included in story points calculation
+  - Test: Unit
+
+- ✅ **TC-6.1.4**: Epic is excluded from work items
+  - Input: Issue type "Epic"
+  - Expected: Excluded from story points calculation
+  - Test: Unit
+
+- ✅ **TC-6.1.5**: Feature is excluded from work items
+  - Input: Issue type "Feature"
+  - Expected: Excluded from story points calculation
+  - Test: Unit
+
+- ✅ **TC-6.1.6**: Initiative is excluded from work items
+  - Input: Issue type "Initiative"
+  - Expected: Excluded from story points calculation
+  - Test: Unit
+
+- ✅ **TC-6.1.7**: X-FEAT is excluded from work items
+  - Input: Issue type "X-FEAT"
+  - Expected: Excluded from story points calculation
+  - Test: Unit
+
+- ✅ **TC-6.1.8**: Capability is excluded from work items
+  - Input: Issue type "Capability"
+  - Expected: Excluded from story points calculation
+  - Test: Unit
+
+### 6.2 Dev/QA Categorization
+
+#### Test Cases:
+- ✅ **TC-6.2.1**: Test issue type categorized as QA
+  - Input: Issue type "Test"
+  - Expected: Categorized as "QA"
+  - Test: Unit
+
+- ✅ **TC-6.2.2**: Test Plan issue type categorized as QA
+  - Input: Issue type "Test Plan"
+  - Expected: Categorized as "QA"
+  - Test: Unit
+
+- ✅ **TC-6.2.3**: Task issue type categorized as Dev
+  - Input: Issue type "Task"
+  - Expected: Categorized as "Dev"
+  - Test: Unit
+
+- ✅ **TC-6.2.4**: Bug issue type categorized as Dev
+  - Input: Issue type "Bug"
+  - Expected: Categorized as "Dev"
+  - Test: Unit
+
+### 6.3 Resolution Categorization
+
+#### Test Cases:
+- ✅ **TC-6.3.1**: Fixed resolution is positive
+  - Input: Resolution "Fixed"
+  - Expected: Categorized as "positive"
+  - Test: Unit
+
+- ✅ **TC-6.3.2**: Done resolution is positive
+  - Input: Resolution "Done"
+  - Expected: Categorized as "positive"
+  - Test: Unit
+
+- ✅ **TC-6.3.3**: Resolved resolution is positive
+  - Input: Resolution "Resolved"
+  - Expected: Categorized as "positive"
+  - Test: Unit
+
+- ✅ **TC-6.3.4**: Complete resolution is positive
+  - Input: Resolution "Complete"
+  - Expected: Categorized as "positive"
+  - Test: Unit
+
+- ✅ **TC-6.3.5**: Won't Do resolution is negative
+  - Input: Resolution "Won't Do"
+  - Expected: Categorized as "negative"
+  - Test: Unit
+
+- ✅ **TC-6.3.6**: Duplicate resolution is negative
+  - Input: Resolution "Duplicate"
+  - Expected: Categorized as "negative"
+  - Test: Unit
+
+- ✅ **TC-6.3.7**: No resolution is unresolved
+  - Input: Resolution None
+  - Expected: Categorized as "unresolved"
+  - Test: Unit
+
+### 6.4 Story Points Extraction
+
+#### Test Cases:
+- ✅ **TC-6.4.1**: Extract story points from customfield_10002
+  - Input: Issue with customfield_10002 = 5.0
+  - Expected: Returns 5.0
+  - Test: Unit
+
+- ✅ **TC-6.4.2**: Extract story points from configured field
+  - Input: Issue with configured field ID
+  - Expected: Returns correct value
+  - Test: Unit
+
+- ✅ **TC-6.4.3**: Missing story points returns 0.0
+  - Input: Issue without story points field
+  - Expected: Returns 0.0
+  - Test: Unit
+
+- ✅ **TC-6.4.4**: Integer story points converted to float
+  - Input: Issue with story points = 3 (int)
+  - Expected: Returns 3.0 (float)
+  - Test: Unit
+
+### 6.5 Story Points Breakdown Calculation
+
+#### Test Cases:
+- ✅ **TC-6.5.1**: Calculate breakdown for work items only
+  - Input: Issues with Task (5 SP) and Epic (10 SP)
+  - Expected: Only Task included (5 SP), Epic excluded
+  - Test: Integration
+
+- ✅ **TC-6.5.2**: Group story points by Dev/QA
+  - Input: Task (5 SP) and Test (3 SP)
+  - Expected: Dev = 5.0, QA = 3.0
+  - Test: Integration
+
+- ✅ **TC-6.5.3**: Categorize by resolution (positive/negative/unresolved)
+  - Input: Done (5 SP), Won't Do (3 SP), Unresolved (2 SP)
+  - Expected: Positive = 5.0, Negative = 3.0, Unresolved = 2.0
+  - Test: Integration
+
+- ✅ **TC-6.5.4**: Complex breakdown with multiple issues
+  - Input: Multiple issues with different types and resolutions
+  - Expected: Correct aggregation by Dev/QA and resolution
+  - Test: Integration
+
+- ✅ **TC-6.5.5**: Empty issue keys returns zero breakdown
+  - Input: Empty list of issue keys
+  - Expected: All values = 0.0
+  - Test: Unit
+
+### 6.6 Story Points Display Format
+
+#### Test Cases:
+- ✅ **TC-6.6.1**: Format breakdown shows only story points (no counts)
+  - Input: Breakdown with story points
+  - Expected: Display shows "Dev: X.X", "QA: X.X" (no counts)
+  - Test: Unit
+
+- ✅ **TC-6.6.2**: Format includes positive, negative, and unresolved
+  - Input: Complete breakdown
+  - Expected: All three categories displayed
+  - Test: Unit
+
+- ✅ **TC-6.6.3**: Format handles zero values
+  - Input: Breakdown with zero story points
+  - Expected: Displays "Dev: 0.0", "QA: 0.0"
+  - Test: Unit
+
+### 6.7 JQL Query Building
+
+#### Test Cases:
+- ✅ **TC-6.7.1**: Build JQL for single issue key
+  - Input: ["ERA-48896"]
+  - Expected: JQL includes key, Parent Link, portfolio children, etc.
+  - Test: Unit
+
+- ✅ **TC-6.7.2**: Build JQL for multiple issue keys
+  - Input: ["ERA-48896", "ERA-44920"]
+  - Expected: JQL includes all keys
+  - Test: Unit
+
+- ✅ **TC-6.7.3**: JQL includes all relationship types
+  - Input: Issue keys
+  - Expected: JQL includes key, Parent Link, FEAT ID, FEAT Number, portfolio children, epics, subtasks
+  - Test: Unit
+
+---
+
 ## Test Reporting
 
 ### Coverage Reports:

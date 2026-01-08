@@ -258,6 +258,24 @@
             max-width: 300px;
         }
 
+        /* Story Points Breakdown */
+        .story-points-breakdown {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            line-height: 1.6;
+            white-space: pre-line;
+        }
+
+        .story-points-breakdown a {
+            color: #0066cc;
+            text-decoration: underline;
+        }
+
+        .story-points-breakdown a:hover {
+            color: #004499;
+            text-decoration: underline;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -502,8 +520,32 @@
             <div class="page" id="page-query">
                 <h2>Query Builder</h2>
                 
+                <!-- Project and FixVersion Selectors -->
+                <div style="background: #f8f8f8; padding: 20px; border-radius: 4px; margin-top: 20px; margin-bottom: 20px;">
+                    <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.1em;">Quick Select (Automatic JQL)</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="form-group" style="margin: 0;">
+                            <label for="projectSelect">Project</label>
+                            <select id="projectSelect" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px;">
+                                <option value="">-- Select Project --</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label for="versionSelect">Fix Version</label>
+                            <select id="versionSelect" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px;" disabled>
+                                <option value="">-- Select Project First --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="font-size: 0.85em; color: #666; margin-top: 10px;">
+                        💡 Select a project and fixVersion to automatically generate JQL query
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin: 15px 0; color: #666; font-weight: 500;">OR</div>
+
                 <div class="form-group" style="margin-top: 20px;">
-                    <label for="jqlInput">JQL Query</label>
+                    <label for="jqlInput">JQL Query (Manual)</label>
                     <div style="position: relative;">
                         <textarea 
                             id="jqlInput" 
@@ -628,6 +670,8 @@
             // Load page-specific data
             if (page === 'config') {
                 loadConfiguration();
+            } else if (page === 'query') {
+                loadProjects();
             }
         }
 
@@ -1214,7 +1258,15 @@
                                         display = value.displayName || value.name || value.value || JSON.stringify(value);
                                     }
                                 } else {
-                                    display = String(value);
+                                    // Handle story points breakdown with line breaks and HTML
+                                    if (col === 'story_points_breakdown' && value) {
+                                        // Value already contains HTML (hyperlinks and bold tags)
+                                        // Convert newlines to <br> tags and wrap in styled div
+                                        const formattedValue = String(value).replace(/\n/g, '<br>');
+                                        display = `<div class="story-points-breakdown">${formattedValue}</div>`;
+                                    } else {
+                                        display = String(value);
+                                    }
                                 }
                             }
                         }
@@ -1282,6 +1334,84 @@
         function clearResults() {
             document.getElementById('queryResults').classList.add('hidden');
             document.getElementById('jqlInput').value = '';
+            document.getElementById('projectSelect').value = '';
+            document.getElementById('versionSelect').value = '';
+            document.getElementById('versionSelect').disabled = true;
+            document.getElementById('versionSelect').innerHTML = '<option value="">-- Select Project First --</option>';
+        }
+
+        // Load projects with fixVersions
+        async function loadProjects() {
+            try {
+                const response = await fetch(`${BACKEND_API_URL}/api/projects`);
+                const data = await response.json();
+                
+                const projectSelect = document.getElementById('projectSelect');
+                if (data.success && data.projects) {
+                    projectSelect.innerHTML = '<option value="">-- Select Project --</option>';
+                    data.projects.forEach(project => {
+                        const option = document.createElement('option');
+                        option.value = project.key;
+                        option.textContent = `${project.name} (${project.key})`;
+                        projectSelect.appendChild(option);
+                    });
+                } else {
+                    projectSelect.innerHTML = '<option value="">Error loading projects</option>';
+                }
+            } catch (error) {
+                console.error('Error loading projects:', error);
+                document.getElementById('projectSelect').innerHTML = '<option value="">Error loading projects</option>';
+            }
+        }
+
+        // Load versions for selected project
+        async function loadVersions(projectKey) {
+            const versionSelect = document.getElementById('versionSelect');
+            
+            if (!projectKey) {
+                versionSelect.disabled = true;
+                versionSelect.innerHTML = '<option value="">-- Select Project First --</option>';
+                return;
+            }
+            
+            versionSelect.disabled = true;
+            versionSelect.innerHTML = '<option value="">Loading versions...</option>';
+            
+            try {
+                const response = await fetch(`${BACKEND_API_URL}/api/projects/${projectKey}/versions`);
+                const data = await response.json();
+                
+                if (data.success && data.versions) {
+                    versionSelect.innerHTML = '<option value="">-- Select Fix Version --</option>';
+                    data.versions.forEach(version => {
+                        const option = document.createElement('option');
+                        option.value = version.name;
+                        option.textContent = version.name + (version.archived ? ' (Archived)' : '') + (version.released ? ' (Released)' : '');
+                        versionSelect.appendChild(option);
+                    });
+                    versionSelect.disabled = false;
+                } else {
+                    versionSelect.innerHTML = '<option value="">No versions found</option>';
+                }
+            } catch (error) {
+                console.error('Error loading versions:', error);
+                versionSelect.innerHTML = '<option value="">Error loading versions</option>';
+            }
+        }
+
+        // Auto-generate JQL from project and version selections
+        function generateJQLFromSelection() {
+            const projectKey = document.getElementById('projectSelect').value;
+            const versionName = document.getElementById('versionSelect').value;
+            
+            if (projectKey && versionName) {
+                // Escape version name if it contains special characters
+                const escapedVersion = versionName.includes(' ') || versionName.includes('-') 
+                    ? `"${versionName}"` 
+                    : versionName;
+                const jql = `project = ${projectKey} AND fixVersion = ${escapedVersion}`;
+                document.getElementById('jqlInput').value = jql;
+            }
         }
 
         // Load configuration
@@ -1409,8 +1539,29 @@
             }
         }
 
-        // Handle page size change
+        // Handle page size change and setup project/version selectors
         document.addEventListener('DOMContentLoaded', function() {
+            // Setup project selector
+            const projectSelect = document.getElementById('projectSelect');
+            if (projectSelect) {
+                projectSelect.addEventListener('change', function() {
+                    const projectKey = this.value;
+                    loadVersions(projectKey);
+                    generateJQLFromSelection();
+                });
+            }
+
+            // Setup version selector
+            const versionSelect = document.getElementById('versionSelect');
+            if (versionSelect) {
+                versionSelect.addEventListener('change', function() {
+                    generateJQLFromSelection();
+                });
+            }
+
+            // Load projects on page load
+            loadProjects();
+
             const pageSizeSelect = document.getElementById('pageSize');
             if (pageSizeSelect) {
                 pageSizeSelect.addEventListener('change', function() {

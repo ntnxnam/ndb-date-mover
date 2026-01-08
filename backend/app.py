@@ -77,6 +77,10 @@ from backend.date_utils import (
     get_week_slip_color,
 )
 from backend.ai_summarizer import summarize_status_update
+from backend.story_points_calculator import (
+    calculate_story_points_breakdown,
+    format_story_points_breakdown,
+)
 
 # Load environment variables
 load_dotenv()
@@ -199,6 +203,95 @@ def test_connection():
         )
 
 
+@app.route("/api/projects", methods=["GET"])
+def get_projects():
+    """
+    Get all projects that have fixVersions configured.
+    
+    Returns:
+        JSON response with list of projects
+    """
+    logger.info("Projects list requested")
+    
+    try:
+        client = create_jira_client()
+        if client is None:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "JIRA credentials not configured",
+                    }
+                ),
+                400,
+            )
+        
+        projects = client.get_projects_with_versions()
+        
+        return jsonify({
+            "success": True,
+            "projects": projects,
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching projects: {str(e)}")
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": f"Failed to fetch projects: {str(e)}",
+                }
+            ),
+            500,
+        )
+
+
+@app.route("/api/projects/<project_key>/versions", methods=["GET"])
+def get_project_versions(project_key: str):
+    """
+    Get all fixVersions for a specific project.
+    
+    Args:
+        project_key: JIRA project key (e.g., "PROJ")
+    
+    Returns:
+        JSON response with list of versions
+    """
+    logger.info(f"Versions requested for project: {project_key}")
+    
+    try:
+        client = create_jira_client()
+        if client is None:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "JIRA credentials not configured",
+                    }
+                ),
+                400,
+            )
+        
+        versions = client.get_project_versions(project_key)
+        
+        return jsonify({
+            "success": True,
+            "versions": versions,
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching versions: {str(e)}")
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": f"Failed to fetch versions: {str(e)}",
+                }
+            ),
+            500,
+        )
+
+
 @app.route("/api/query", methods=["POST"])
 def execute_query():
     """
@@ -311,6 +404,77 @@ def execute_query():
                     enriched_issues.append(issue)
             
             logger.info(f"Successfully enriched {len(enriched_issues)} issues")
+            
+            # Step 4: Calculate story points breakdown for each issue
+            # IMPORTANT: We only fetch basic fields (issuetype, resolution, story points) for related tickets
+            # We do NOT fetch history/changelog for related tickets - only for the original query results
+            # This prevents timeout and improves performance
+            logger.info("Calculating story points breakdown (minimal fields only, no history for related tickets)...")
+            issue_keys = [issue.get("key", "") for issue in enriched_issues if issue.get("key")]
+            
+            # Load story points configuration from config file
+            story_points_config = {}
+            try:
+                config = config_loader.load()
+                story_points_config = config.get("story_points_config", {})
+            except Exception as e:
+                logger.warning(f"Could not load story_points_config: {str(e)}, using defaults")
+            
+            positive_resolutions = set(story_points_config.get("positive_resolutions", ["Fixed", "Done", "Resolved", "Complete"]))
+            story_points_field_id = story_points_config.get("story_points_field_id", "customfield_10016")
+            
+            if issue_keys:
+                try:
+                    # Calculate story points breakdown for each issue individually
+                    # This ensures each row shows breakdown for that specific issue and its related tickets
+                    # We process sequentially to avoid overwhelming JIRA API
+                    for idx, enriched_issue in enumerate(enriched_issues, 1):
+                        issue_key = enriched_issue.get("key", "")
+                        if not issue_key:
+                            enriched_issue["fields"]["story_points_breakdown"] = ""
+                            enriched_issue["fields"]["story_points_breakdown_raw"] = None
+                            continue
+                        
+                        if idx % 10 == 0 or idx == len(enriched_issues):
+                            logger.info(f"Calculating story points for issue {idx}/{len(enriched_issues)}: {issue_key}")
+                        
+                        try:
+                            # Calculate breakdown for this specific issue and its related tickets
+                            # Only fetches minimal fields (issuetype, resolution, story points) - NO history
+                            # max_results limited to prevent timeout
+                            issue_breakdown = calculate_story_points_breakdown(
+                                client, [issue_key], 
+                                story_points_field_id=story_points_field_id,
+                                positive_resolutions=positive_resolutions,
+                                max_results=2000
+                            )
+                            # Get JIRA base URL for hyperlinks from the client
+                            jira_base_url = getattr(client, 'base_url', None)
+                            if not jira_base_url:
+                                # Fallback to environment variable if client doesn't have it
+                                import os
+                                jira_base_url = os.getenv("JIRA_URL")
+                            enriched_issue["fields"]["story_points_breakdown"] = format_story_points_breakdown(
+                                issue_breakdown,
+                                issue_keys=[issue_key],
+                                jira_base_url=jira_base_url,
+                                positive_resolutions=positive_resolutions
+                            )
+                            enriched_issue["fields"]["story_points_breakdown_raw"] = issue_breakdown
+                        except Exception as e:
+                            logger.error(f"Error calculating story points for {issue_key}: {str(e)}")
+                            enriched_issue["fields"]["story_points_breakdown"] = f"Error: {str(e)}"
+                            enriched_issue["fields"]["story_points_breakdown_raw"] = None
+                    
+                    logger.info("Story points breakdown calculated successfully")
+                except Exception as e:
+                    logger.error(f"Error calculating story points breakdown: {str(e)}")
+                    # Continue without story points if calculation fails
+                    for enriched_issue in enriched_issues:
+                        enriched_issue["fields"]["story_points_breakdown"] = "Error calculating story points"
+                        enriched_issue["fields"]["story_points_breakdown_raw"] = None
+            else:
+                logger.warning("No issue keys found for story points calculation")
             
             result["issues"] = enriched_issues
             result["field_metadata"] = {

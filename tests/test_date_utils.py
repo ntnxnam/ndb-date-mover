@@ -26,20 +26,20 @@ class TestDateFormatting:
     """Test cases for date formatting."""
 
     def test_format_iso_date(self):
-        """Test formatting ISO date to mm/dd/yyyy."""
+        """Test formatting ISO date to dd/mmm/yyyy."""
         result = format_date("2024-12-25T10:30:00.000+0000", "mm/dd/yyyy")
-        assert result == "12/25/2024"
+        assert result == "25/Dec/2024"
 
     def test_format_simple_date(self):
         """Test formatting simple date."""
         result = format_date("2024-12-25", "mm/dd/yyyy")
-        assert result == "12/25/2024"
+        assert result == "25/Dec/2024"
 
     def test_format_different_target(self):
-        """Test formatting - always returns mm/dd/yyyy regardless of target."""
-        # Display format is always mm/dd/yyyy, even if different target specified
+        """Test formatting - always returns dd/mmm/yyyy regardless of target."""
+        # Display format is always dd/mmm/yyyy, even if different target specified
         result = format_date("2024-12-25", "yyyy-mm-dd")
-        assert result == "12/25/2024"  # Always mm/dd/yyyy for display
+        assert result == "25/Dec/2024"  # Always dd/mmm/yyyy for display
 
     def test_format_invalid_date(self):
         """Test formatting invalid date returns original."""
@@ -71,7 +71,8 @@ class TestWeekSlipCalculation:
         """Test zero week slip."""
         weeks, week_str = calculate_week_slip("2024-01-01", "2024-01-01")
         assert weeks == 0
-        assert "0 weeks" in week_str
+        # For 0 delta, we display "0 days" (consistent with date difference display rules)
+        assert "0 days" in week_str
 
     def test_partial_week(self):
         """Test partial week calculation."""

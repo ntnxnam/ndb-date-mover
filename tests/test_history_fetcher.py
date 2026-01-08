@@ -152,7 +152,7 @@ class TestHistoryFetcherSingleIssue:
         result = fetcher.fetch_history_for_issue("TEST-123", include_history=True)
         
         assert "customfield_11067" in result
-        assert result["customfield_11067"]["current"] == "12/25/2024"
+        assert result["customfield_11067"]["current"] == "25/Dec/2024"
         assert len(result["customfield_11067"]["history"]) > 0
         assert result["customfield_11067"]["week_slip"] is not None
     

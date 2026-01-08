@@ -19,6 +19,7 @@ flake8==7.0.0
 anthropic==0.34.0
 openai==1.54.0  # Optional: for OpenAI API fallback
 
+
 # PDF Generation
 reportlab==4.0.7
 

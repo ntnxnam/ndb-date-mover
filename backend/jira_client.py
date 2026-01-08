@@ -340,7 +340,7 @@ class JiraClient:
             logger.error(f"Error retrieving user info: {str(e)}")
             return None
 
-    def execute_jql(self, jql: str, max_results: int = 100, start_at: int = 0) -> Dict:
+    def execute_jql(self, jql: str, max_results: int = 100, start_at: int = 0, fields: str = "*all") -> Dict:
         """
         Execute a JQL query against JIRA.
         
@@ -350,6 +350,9 @@ class JiraClient:
             jql: JQL query string or filter ID (filter=xxxxx)
             max_results: Maximum number of results to return (default: 100)
             start_at: Starting index for pagination (default: 0)
+            fields: Fields to fetch (default: "*all"). Use comma-separated list for specific fields
+                   (e.g., "issuetype,resolution,customfield_10016") to improve performance.
+                   Note: This does NOT affect changelog/history - that's fetched separately.
             
         Returns:
             Dict: Query results with issues and metadata
@@ -437,7 +440,7 @@ class JiraClient:
             "jql": jql,
             "maxResults": max_results,
             "startAt": start_at,
-            "fields": "*all",  # Get all fields
+            "fields": fields,  # Get specified fields (default: *all)
         }
         
         try:
@@ -810,6 +813,122 @@ class JiraClient:
         # field metadata to match name to ID
         # For now, return False to be safe (caller should use field metadata)
         return False
+
+    def get_projects_with_versions(self) -> List[Dict]:
+        """
+        Get all projects that have fixVersions configured.
+        
+        This method fetches all projects and checks which ones have versions.
+        Only projects with at least one version are returned.
+        
+        Returns:
+            List[Dict]: List of projects, each containing:
+                - key: Project key (e.g., "PROJ")
+                - name: Project name
+                - id: Project ID
+        """
+        logger.info("Fetching projects with fixVersions...")
+        endpoint = "/rest/api/2/project"
+        url = urljoin(self.base_url, endpoint)
+        
+        try:
+            response = self._make_request_with_retry("GET", url)
+            
+            if response.status_code == 200:
+                try:
+                    all_projects = response.json()
+                except ValueError as e:
+                    logger.error(f"Failed to parse JSON response from JIRA projects: {str(e)}")
+                    return []
+                
+                # Filter projects that have versions
+                # Use a more efficient approach: fetch versions in parallel or check quickly
+                projects_with_versions = []
+                for project in all_projects:
+                    project_key = project.get("key", "")
+                    if project_key:
+                        # Quick check: fetch versions for this project
+                        # If it has versions, include it
+                        versions = self.get_project_versions(project_key)
+                        if versions:
+                            projects_with_versions.append({
+                                "key": project_key,
+                                "name": project.get("name", project_key),
+                                "id": project.get("id", ""),
+                            })
+                
+                logger.info(f"Found {len(projects_with_versions)} projects with fixVersions out of {len(all_projects)} total projects")
+                return projects_with_versions
+            else:
+                logger.error(f"Failed to fetch projects: {response.status_code}")
+                return []
+                
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request exception fetching projects: {str(e)}")
+            return []
+    
+    def get_project_versions(self, project_key: str) -> List[Dict]:
+        """
+        Get all fixVersions for a specific project.
+        
+        Args:
+            project_key: JIRA project key (e.g., "PROJ")
+            
+        Returns:
+            List[Dict]: List of versions, each containing:
+                - id: Version ID
+                - name: Version name
+                - released: Whether version is released
+                - archived: Whether version is archived
+        """
+        logger.info(f"Fetching fixVersions for project: {project_key}")
+        endpoint = f"/rest/api/2/project/{project_key}/versions"
+        url = urljoin(self.base_url, endpoint)
+        
+        try:
+            response = self._make_request_with_retry("GET", url)
+            
+            if response.status_code == 200:
+                try:
+                    versions = response.json()
+                except ValueError as e:
+                    logger.error(f"Failed to parse JSON response from JIRA versions: {str(e)}")
+                    return []
+                
+                # Filter out archived versions and return relevant info
+                active_versions = []
+                for version in versions:
+                    if not version.get("archived", False):
+                        active_versions.append({
+                            "id": version.get("id", ""),
+                            "name": version.get("name", ""),
+                            "released": version.get("released", False),
+                            "archived": False,
+                        })
+                    else:
+                        # Include archived but mark them
+                        active_versions.append({
+                            "id": version.get("id", ""),
+                            "name": version.get("name", ""),
+                            "released": version.get("released", False),
+                            "archived": True,
+                        })
+                
+                # Sort by name (typically versions are named with numbers/dates)
+                active_versions.sort(key=lambda v: v["name"])
+                
+                logger.info(f"Found {len(active_versions)} fixVersions for project {project_key}")
+                return active_versions
+            elif response.status_code == 404:
+                logger.warning(f"Project {project_key} not found")
+                return []
+            else:
+                logger.error(f"Failed to fetch versions: {response.status_code}")
+                return []
+                
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request exception fetching versions: {str(e)}")
+            return []
 
     def close(self):
         """

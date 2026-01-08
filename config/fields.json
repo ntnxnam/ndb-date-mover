@@ -51,8 +51,18 @@
       "type": "date",
       "track_history": true,
       "display_name": "Custom Date Field 45660"
+    },
+    {
+      "id": "story_points_breakdown",
+      "type": "text",
+      "track_history": false,
+      "display_name": "Story Points Breakdown"
     }
   ],
+  "story_points_config": {
+    "positive_resolutions": ["Fixed", "Done", "Resolved", "Complete"],
+    "story_points_field_id": "customfield_10002"
+  },
   "display_columns": [
     "key",
     "summary",
@@ -67,7 +77,8 @@
     "customfield_35864",
     "customfield_23560",
     "customfield_23073",
-    "customfield_45660"
+    "customfield_45660",
+    "story_points_breakdown"
   ],
   "date_format": "dd/mmm/yyyy"
 }

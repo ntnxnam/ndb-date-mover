@@ -79,18 +79,19 @@ class TestJiraClientConnection:
             base_url="https://test.atlassian.net", pat_token="test_token_123"
         )
 
-    @patch("backend.jira_client.requests.Session.get")
-    def test_connection_success(self, mock_get, client):
+    @patch("backend.jira_client.JiraClient._make_request_with_retry")
+    def test_connection_success(self, mock_request, client):
         """Test successful connection to JIRA."""
         # Mock successful response
         mock_response = Mock()
         mock_response.status_code = 200
+        mock_response.headers = {"content-type": "application/json"}
         mock_response.json.return_value = {
             "serverTitle": "Test JIRA",
             "version": "9.0.0",
             "deploymentType": "Cloud",
         }
-        mock_get.return_value = mock_response
+        mock_request.return_value = mock_response
 
         success, result = client.test_connection()
 
@@ -100,14 +101,14 @@ class TestJiraClientConnection:
         assert result["server_title"] == "Test JIRA"
         assert result["version"] == "9.0.0"
         assert result["deployment_type"] == "Cloud"
-        mock_get.assert_called_once()
+        mock_request.assert_called_once()
 
-    @patch("backend.jira_client.requests.Session.get")
-    def test_connection_authentication_failure(self, mock_get, client):
+    @patch("backend.jira_client.JiraClient._make_request_with_retry")
+    def test_connection_authentication_failure(self, mock_request, client):
         """Test connection failure due to authentication error (401)."""
         mock_response = Mock()
         mock_response.status_code = 401
-        mock_get.return_value = mock_response
+        mock_request.return_value = mock_response
 
         success, result = client.test_connection()
 
@@ -116,12 +117,12 @@ class TestJiraClientConnection:
         assert "Authentication failed" in result["message"]
         assert result["status_code"] == 401
 
-    @patch("backend.jira_client.requests.Session.get")
-    def test_connection_authorization_failure(self, mock_get, client):
+    @patch("backend.jira_client.JiraClient._make_request_with_retry")
+    def test_connection_authorization_failure(self, mock_request, client):
         """Test connection failure due to authorization error (403)."""
         mock_response = Mock()
         mock_response.status_code = 403
-        mock_get.return_value = mock_response
+        mock_request.return_value = mock_response
 
         success, result = client.test_connection()
 
@@ -130,13 +131,14 @@ class TestJiraClientConnection:
         assert "Authorization failed" in result["message"]
         assert result["status_code"] == 403
 
-    @patch("backend.jira_client.requests.Session.get")
-    def test_connection_other_error_status(self, mock_get, client):
+    @patch("backend.jira_client.JiraClient._make_request_with_retry")
+    def test_connection_other_error_status(self, mock_request, client):
         """Test connection failure with other error status codes."""
         mock_response = Mock()
         mock_response.status_code = 500
+        mock_response.headers = {"content-type": "application/json"}
         mock_response.json.return_value = {"message": "Internal server error"}
-        mock_get.return_value = mock_response
+        mock_request.return_value = mock_response
 
         success, result = client.test_connection()
 

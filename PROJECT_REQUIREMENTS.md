@@ -213,6 +213,61 @@ A web application for tracking and visualizing JIRA project date movements. The 
 - **Cache results** to serve stale data if connection fails
 - **User notification** of connection issues
 
+### 8. Story Points Calculation
+- **Work Item Filtering**: Calculate story points only for work items (Task, Bug, Test, Test Plan, DevDocs, etc.)
+- **Non-Work Items Excluded**: Epic, Feature, Initiative, X-FEAT, Capability are excluded
+- **Dev/QA Grouping**: Group story points by:
+  - Dev: issueType NOT IN (Test, Test Plan)
+  - QA: issueType IN (Test, Test Plan)
+- **Resolution Categorization**:
+  - Positive: Fixed, Done, Resolved, Complete (configurable)
+  - Negative: All other resolutions (not positive, not None)
+  - Unresolved: Tickets with no resolution (None)
+- **Story Points Field**: Uses `customfield_10002` (configurable in `config/fields.json`)
+- **Display Format**: Shows only story points (no counts), grouped by Dev/QA for each resolution category
+- **Hyperlinks**: Story points numbers are clickable links to JQL queries showing all contributing tickets
+  - Links open in new tab (`target="_blank"`)
+  - Zero values don't have hyperlinks
+  - Uses actual JIRA URL from `client.base_url` (from JIRA_URL env var)
+- **Total Section**: Shows sum of all categories (positive + negative + unresolved) in normal font (not bold)
+- **Related Tickets**: Fetches all related tickets using complex JQL (key, Parent Link, FEAT ID, FEAT Number, portfolio children, epics, subtasks)
+- **Performance Optimization**: Only fetches minimal fields (issuetype, resolution, customfield_10002, key) - NO history/changelog for related tickets
+- **Configuration**: Story points config in `config/fields.json`:
+  ```json
+  {
+    "story_points_config": {
+      "positive_resolutions": ["Fixed", "Done", "Resolved", "Complete"],
+      "story_points_field_id": "customfield_10002"
+    }
+  }
+  ```
+- **Display Example**:
+  ```
+  <b>Positive resolutions</b>
+  Dev: <a href="[JIRA_URL]/issues/?jql=...">25.0</a>
+  QA: <a href="[JIRA_URL]/issues/?jql=...">10.0</a>
+
+  <b>Negative resolutions</b>
+  Dev: <a href="[JIRA_URL]/issues/?jql=...">66.0</a>
+  QA: 0.0
+
+  <b>Unresolved</b>
+  Dev: <a href="[JIRA_URL]/issues/?jql=...">15.0</a>
+  QA: <a href="[JIRA_URL]/issues/?jql=...">8.0</a>
+
+  Total
+  Dev: 106.0
+  QA: 18.0
+  ```
+
+### 9. Email Export Functionality
+- **Email export button** next to CSV export in UI
+- **HTML email body** matching UI table display with full formatting
+- **CSV attachment** included with every email
+- **SMTP configuration** via `config/smtp.json`
+- **Timezone support**: Date formatting in email subject based on configured timezone
+- **Always CC**: Automatically CC namratha.singh@nutanix.com on all emails
+
 ### 10. Error Handling & User Communication
 
 #### Error Types to Handle
